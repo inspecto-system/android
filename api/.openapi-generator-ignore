@@ -1,5 +1,5 @@
 # Files of the generated client that the app does not use: Retrofit and OkHttp are configured
 # by Hilt (core/network), not by the generated ApiClient.
 **/infrastructure/ApiClient.kt
-# Internal service-to-service model; openapi-generator 7.14 renders its `const: true` as a string.
+# Internal service-to-service model, not used by the app.
 **/models/AccessDecision.kt
