@@ -6,7 +6,7 @@ hilt = "2.60.1"
 ktlint-gradle = "14.2.0"
 detekt = "1.23.8"
 kover = "0.9.11"
-openapi-generator = "7.14.0"
+openapi-generator = "7.27.0"
 
 compose-bom = "2026.09.00"
 activity-compose = "1.13.0"
