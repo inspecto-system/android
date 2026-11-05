@@ -1,0 +1,35 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "37 3 * * 1" # weekly CodeQL scan
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.event_name != 'schedule'
+    uses: inspecto-system/platform/.github/workflows/android.yml@main
+    permissions:
+      contents: write # dependency graph submission
+    with:
+      java-version: "21"
+
+  security:
+    uses: inspecto-system/platform/.github/workflows/security.yml@main
+    permissions:
+      contents: read
+      security-events: write
+    with:
+      # CodeQL is the slowest check: on merges to main and weekly, not on every PR commit.
+      codeql-language: ${{ github.event_name != 'pull_request' && 'java-kotlin' || '' }}
+      # Kotlin needs a build for CodeQL (build mode "none" covers Java only).
+      codeql-build-mode: autobuild
