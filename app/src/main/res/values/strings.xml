@@ -2,4 +2,85 @@
 <resources>
     <string name="app_name" translatable="false">Inspecto</string>
     <string name="start_subtitle">Осмотр и приёмка недвижимости</string>
+
+    <!-- Local network permission (Android 17+) -->
+    <string name="local_network_title">Доступ к локальной сети</string>
+    <string name="local_network_text">Inspecto подключается к серверу системы на вашем компьютере через локальную сеть (Wi-Fi). Без этого разрешения вход и работа с объектами невозможны.</string>
+    <string name="local_network_denied">Разрешение не выдано. Разрешите доступ к устройствам в локальной сети в настройках приложения.</string>
+    <string name="local_network_allow">Разрешить</string>
+    <string name="local_network_settings">Открыть настройки</string>
+
+    <!-- Sign-in and registration -->
+    <string name="auth_email">Email</string>
+    <string name="auth_password">Пароль</string>
+    <string name="auth_full_name">Имя и фамилия</string>
+    <string name="auth_sign_in">Войти</string>
+    <string name="auth_sign_up">Зарегистрироваться</string>
+    <string name="auth_to_register">Нет аккаунта? Регистрация</string>
+    <string name="auth_to_login">Уже есть аккаунт? Войти</string>
+    <string name="auth_register_title">Регистрация</string>
+    <string name="auth_password_hint">Не короче 10 символов</string>
+    <string name="sign_out">Выйти</string>
+
+    <!-- Validation -->
+    <string name="validation_email">Введите email</string>
+    <string name="validation_password_required">Введите пароль</string>
+    <string name="validation_password_length">Пароль должен быть не короче 10 символов</string>
+    <string name="validation_required">Заполните поле</string>
+    <string name="validation_area">Площадь — число от 0 до 100 000</string>
+
+    <!-- Errors -->
+    <string name="error_network">Нет связи с сервером. Проверьте подключение и повторите.</string>
+    <string name="error_invalid_credentials">Неверный email или пароль</string>
+    <string name="error_account_locked">Слишком много неудачных попыток. Попробуйте через 15 минут.</string>
+    <string name="error_email_taken">Пользователь с таким email уже зарегистрирован</string>
+    <string name="error_weak_password">Пароль слишком простой или совпадает с email</string>
+    <string name="error_rate_limited">Слишком много запросов. Попробуйте позже.</string>
+    <string name="error_validation">Проверьте правильность заполнения полей</string>
+    <string name="error_not_found">Объект не найден или был удалён</string>
+    <string name="error_version_conflict">Данные изменились на другом устройстве. Обновите экран.</string>
+    <string name="error_unexpected">Что-то пошло не так. Повторите попытку.</string>
+    <string name="retry">Повторить</string>
+
+    <!-- Properties -->
+    <string name="properties_title">Объекты</string>
+    <string name="properties_search">Поиск по названию или адресу</string>
+    <string name="properties_empty">Объектов пока нет. Добавьте первый.</string>
+    <string name="properties_not_found">Ничего не найдено</string>
+    <string name="property_add">Добавить объект</string>
+    <string name="property_new_title">Новый объект</string>
+    <string name="property_name">Название</string>
+    <string name="property_type">Тип</string>
+    <string name="property_address">Адрес</string>
+    <string name="property_city">Город</string>
+    <string name="property_area">Площадь, м²</string>
+    <string name="property_notes">Заметки</string>
+    <string name="property_area_value">%1$s м²</string>
+    <string name="save">Сохранить</string>
+    <string name="cancel">Отмена</string>
+    <string name="back">Назад</string>
+    <string name="delete">Удалить</string>
+
+    <string name="property_type_apartment">Квартира</string>
+    <string name="property_type_house">Дом</string>
+    <string name="property_type_commercial">Коммерческая</string>
+    <string name="property_type_other">Другое</string>
+
+    <!-- Rooms -->
+    <string name="rooms_title">Помещения</string>
+    <string name="rooms_empty">Помещений пока нет</string>
+    <string name="room_add">Добавить помещение</string>
+    <string name="room_rename">Переименовать</string>
+    <string name="room_name">Название помещения</string>
+    <string name="room_type">Тип помещения</string>
+    <string name="room_delete_title">Удалить помещение?</string>
+    <string name="room_delete_text">«%1$s» будет удалено.</string>
+
+    <string name="room_type_living">Жилая</string>
+    <string name="room_type_kitchen">Кухня</string>
+    <string name="room_type_bathroom">Ванная</string>
+    <string name="room_type_toilet">Туалет</string>
+    <string name="room_type_hallway">Прихожая</string>
+    <string name="room_type_balcony">Балкон</string>
+    <string name="room_type_other">Другое</string>
 </resources>

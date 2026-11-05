@@ -2,6 +2,7 @@ package dev.inspecto.android.core.network
 
 import dev.inspecto.android.api.apis.DictionariesApi
 import dev.inspecto.android.api.apis.PropertiesApi
+import dev.inspecto.android.api.models.CreatePropertyRequest
 import dev.inspecto.android.api.models.SeverityLevel
 import kotlinx.coroutines.test.runTest
 import mockwebserver3.MockResponse
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import retrofit2.Retrofit
+import java.math.BigDecimal
 import java.time.OffsetDateTime
 import java.util.UUID
 
@@ -25,7 +27,7 @@ class NetworkModuleTest {
     fun startServer() {
         server.start()
         retrofit =
-            NetworkModule.provideRetrofit(
+            NetworkModule.retrofit(
                 NetworkModule.provideOkHttpClient(),
                 NetworkModule.provideJson(),
                 server.url("/api/v1/").toString(),
@@ -76,6 +78,36 @@ class NetworkModuleTest {
             assertNull(property.city)
             assertTrue(property.rooms.isEmpty())
             assertEquals("/api/v1/properties/$id", server.takeRequest().url.encodedPath)
+        }
+
+    @Test
+    fun shouldWriteAndReadDecimalsAsJsonNumbers() =
+        runTest {
+            val id = UUID.randomUUID()
+            server.enqueue(
+                json(
+                    """{"id":"$id","name":"Дача","type":"HOUSE","address":"пос. Лесной","areaSqm":54.30,""" +
+                        """"createdAt":"2026-11-05T10:00:00Z","updatedAt":"2026-11-05T10:00:00Z","version":0}""",
+                ),
+            )
+            val request =
+                CreatePropertyRequest(
+                    name = "Дача",
+                    type = CreatePropertyRequest.Type.HOUSE,
+                    address = "пос. Лесной",
+                    areaSqm = BigDecimal("54.30"),
+                )
+
+            val created = retrofit.create(PropertiesApi::class.java).createProperty(request).body()!!
+
+            assertTrue(
+                server
+                    .takeRequest()
+                    .body!!
+                    .utf8()
+                    .contains(""""areaSqm":54.30"""),
+            )
+            assertEquals(BigDecimal("54.30"), created.areaSqm)
         }
 
     @Test

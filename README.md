@@ -17,7 +17,9 @@ Kotlin 2.4, Jetpack Compose (Material 3), Navigation Compose, Hilt, Retrofit + O
 ./gradlew installDebug    # установка на запущенный эмулятор или телефон
 ```
 
-Адрес API по умолчанию — `https://10.0.2.2/api/v1/` (компьютер разработчика из эмулятора); другой адрес: `./gradlew assembleDebug -Pinspecto.apiBaseUrl=https://…/api/v1/`.
+Адрес API: debug-сборка — `http://10.0.2.2:8081/api/v1/` (core-service на компьютере разработчика, как его видит эмулятор; HTTP разрешён только для этого адреса и только в debug), release — HTTPS. Другой адрес: `./gradlew assembleDebug -Pinspecto.apiBaseUrl=http://…/api/v1/`.
+
+Для работы с сервером нужен запущенный core-service (см. README в `core-service`). На Android 17+ приложение при первом запуске запрашивает разрешение на доступ к локальной сети (`ACCESS_LOCAL_NETWORK`): сервер работает на компьютере владельца в локальной сети.
 
 ## Проверки качества
 
@@ -26,6 +28,8 @@ Kotlin 2.4, Jetpack Compose (Material 3), Navigation Compose, Hilt, Retrofit + O
 ./gradlew ktlintFormat
 # то же, что CI
 ./gradlew ktlintCheck detekt lintDebug testDebugUnitTest koverVerify assembleDebug
+# Android Keystore и файловое хранилище — на запущенном эмуляторе или телефоне
+./gradlew connectedDebugAndroidTest
 ```
 
 CI: `.github/workflows/ci.yml` → общий workflow `platform/.github/workflows/android.yml`, плюс Gitleaks, Dependency Review и CodeQL. Отчёты: `app/build/reports/`.
