@@ -12,9 +12,12 @@ plugins {
     alias(libs.plugins.openapi.generator)
 }
 
-/** Base URL of the public API; the default reaches nginx on the host from the Android emulator. */
-val apiBaseUrl: String =
-    providers.gradleProperty("inspecto.apiBaseUrl").getOrElse("https://10.0.2.2/api/v1/")
+/**
+ * Base URL of the public API. Debug builds default to core-service on the developer's computer as
+ * seen from the Android emulator (10.0.2.2:8081, plain HTTP allowed only there, see
+ * src/debug/res/xml/network_security_config.xml); release builds default to nginx over HTTPS.
+ */
+fun apiBaseUrl(default: String): String = providers.gradleProperty("inspecto.apiBaseUrl").getOrElse(default)
 
 android {
     namespace = "dev.inspecto.android"
@@ -26,7 +29,16 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "0.1.0"
-        buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        debug {
+            buildConfigField("String", "API_BASE_URL", "\"${apiBaseUrl("http://10.0.2.2:8081/api/v1/")}\"")
+        }
+        release {
+            buildConfigField("String", "API_BASE_URL", "\"${apiBaseUrl("https://10.0.2.2/api/v1/")}\"")
+        }
     }
 
     buildFeatures {
@@ -184,6 +196,7 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.retrofit.kotlinx.serialization)
     implementation(libs.okhttp)
+    implementation(libs.androidx.datastore.preferences)
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
@@ -197,4 +210,9 @@ dependencies {
     testImplementation(libs.androidx.test.core)
     testImplementation(platform(libs.compose.bom))
     testImplementation(libs.compose.ui.test.junit4)
+
+    // Instrumented tests on a device or emulator: Android Keystore is not available on the JVM.
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
 }
