@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window theme before Compose draws; the app UI is themed by InspectoTheme. -->
+    <style name="Theme.Inspecto" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

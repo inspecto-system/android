@@ -1,0 +1,29 @@
+# Additions to the default detekt rules (buildUponDefaultConfig). Formatting is checked by ktlint.
+# Exceptions follow the Jetpack Compose API guidelines and are limited to @Composable functions.
+naming:
+  FunctionNaming:
+    ignoreAnnotated: ['Composable']
+  TopLevelPropertyNaming:
+    constantPattern: '[A-Z][A-Za-z0-9]*'
+
+complexity:
+  LongParameterList:
+    ignoreAnnotated: ['Composable']
+  LongMethod:
+    ignoreAnnotated: ['Composable']
+
+style:
+  UnusedPrivateMember:
+    ignoreAnnotated: ['Preview']
+  MagicNumber:
+    # Default exclusions (tests) plus the theme, whose colours are design constants.
+    excludes:
+      - '**/test/**'
+      - '**/androidTest/**'
+      - '**/commonTest/**'
+      - '**/jvmTest/**'
+      - '**/androidUnitTest/**'
+      - '**/androidInstrumentedTest/**'
+      - '**/jsTest/**'
+      - '**/iosTest/**'
+      - '**/ui/theme/**'
