@@ -58,6 +58,12 @@ android {
                 .get()
                 .asFile.path,
         )
+        getByName("main").kotlin.directories.add(
+            layout.buildDirectory
+                .dir("generated/openapi-media/src/main/kotlin")
+                .get()
+                .asFile.path,
+        )
     }
 
     lint {
@@ -126,7 +132,29 @@ openApiGenerate {
     generateModelDocumentation.set(false)
 }
 
-tasks.named("preBuild") { dependsOn("openApiGenerate") }
+// media-service client (photo upload, limits); a separate package because both contracts share common.yaml.
+val openApiGenerateMedia by tasks.registering(org.openapitools.generator.gradle.plugin.tasks.GenerateTask::class) {
+    generatorName.set("kotlin")
+    library.set("jvm-retrofit2")
+    inputSpec.set(rootProject.file("api/media.yaml").toURI().toString())
+    outputDir.set(
+        layout.buildDirectory
+            .dir("generated/openapi-media")
+            .get()
+            .asFile.path,
+    )
+    packageName.set("dev.inspecto.android.media.api")
+    openapiNormalizer.set(mapOf("FILTER" to "tag:photos"))
+    configOptions.set(openApiGenerate.configOptions)
+    cleanupOutput.set(true)
+    ignoreFileOverride.set(rootProject.file("api/.openapi-generator-ignore").path)
+    generateApiTests.set(false)
+    generateModelTests.set(false)
+    generateApiDocumentation.set(false)
+    generateModelDocumentation.set(false)
+}
+
+tasks.named("preBuild") { dependsOn("openApiGenerate", openApiGenerateMedia) }
 
 // ---------- Code quality (CODE_QUALITY.md §2) ----------
 ktlint {
@@ -135,7 +163,7 @@ ktlint {
 
 // The generated client is part of the main source set (and excluded above), so ktlint runs after it.
 tasks.withType<org.jlleitschuh.gradle.ktlint.tasks.BaseKtLintCheckTask>().configureEach {
-    dependsOn("openApiGenerate")
+    dependsOn("openApiGenerate", openApiGenerateMedia)
 }
 
 detekt {
@@ -150,6 +178,7 @@ kover {
                 // Generated code (CODE_QUALITY.md §5).
                 packages(
                     "dev.inspecto.android.api",
+                    "dev.inspecto.android.media.api",
                     "hilt_aggregated_deps",
                     "dagger.hilt.internal.aggregatedroot.codegen",
                 )
