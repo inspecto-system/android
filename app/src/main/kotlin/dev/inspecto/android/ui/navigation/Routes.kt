@@ -22,3 +22,15 @@ data object CreatePropertyRoute : Route
 data class PropertyDetailsRoute(
     val propertyId: String,
 ) : Route
+
+/** New inspection of a property. */
+@Serializable
+data class CreateInspectionRoute(
+    val propertyId: String,
+) : Route
+
+/** Inspection with its checklist and defects. */
+@Serializable
+data class InspectionRoute(
+    val inspectionId: String,
+) : Route

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,13 +34,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.inspecto.android.R
 import dev.inspecto.android.api.models.CreateRoomRequest
+import dev.inspecto.android.api.models.InspectionSummary
 import dev.inspecto.android.api.models.PropertyDetails
 import dev.inspecto.android.api.models.Room
+import dev.inspecto.android.feature.inspections.inspectionStatusLabel
+import dev.inspecto.android.feature.inspections.localDate
 import dev.inspecto.android.ui.components.ErrorText
 import dev.inspecto.android.ui.components.FormField
+import java.util.UUID
 
 /** Dialog shown over the property card. */
 private sealed interface RoomDialog {
@@ -58,9 +64,15 @@ private sealed interface RoomDialog {
 @Composable
 fun PropertyDetailsScreen(
     onBack: () -> Unit,
+    onNewInspection: () -> Unit,
+    onOpenInspection: (UUID) -> Unit,
     viewModel: PropertyDetailsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LifecycleResumeEffect(Unit) {
+        viewModel.refreshInspections()
+        onPauseOrDispose {}
+    }
     var dialog by remember { mutableStateOf<RoomDialog?>(null) }
     val property = state.property
     Scaffold(
@@ -83,9 +95,14 @@ fun PropertyDetailsScreen(
                 property != null ->
                     PropertyContent(
                         property = property,
+                        inspections = state.inspections,
                         errorRes = state.errorRes,
-                        onRename = { dialog = RoomDialog.Rename(it) },
-                        onDelete = { dialog = RoomDialog.Delete(it) },
+                        roomActions =
+                            RoomActions(
+                                { dialog = RoomDialog.Rename(it) },
+                                { dialog = RoomDialog.Delete(it) },
+                            ),
+                        inspectionActions = InspectionActions(onNewInspection, onOpenInspection),
                     )
                 state.loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 else ->
@@ -99,12 +116,25 @@ fun PropertyDetailsScreen(
     RoomDialogs(dialog, viewModel, onDismiss = { dialog = null })
 }
 
+/** Room buttons of the card. */
+private class RoomActions(
+    val onRename: (Room) -> Unit,
+    val onDelete: (Room) -> Unit,
+)
+
+/** Inspection buttons of the card. */
+private class InspectionActions(
+    val onNew: () -> Unit,
+    val onOpen: (UUID) -> Unit,
+)
+
 @Composable
 private fun PropertyContent(
     property: PropertyDetails,
+    inspections: List<InspectionSummary>,
     errorRes: Int?,
-    onRename: (Room) -> Unit,
-    onDelete: (Room) -> Unit,
+    roomActions: RoomActions,
+    inspectionActions: InspectionActions,
 ) {
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
@@ -127,7 +157,44 @@ private fun PropertyContent(
                 Text(stringResource(R.string.rooms_empty))
             }
         }
-        items(property.rooms, key = { it.id }) { room -> RoomRow(room, onRename, onDelete) }
+        items(property.rooms, key = { it.id }) { room -> RoomRow(room, roomActions.onRename, roomActions.onDelete) }
+        item {
+            Row(Modifier.fillMaxWidth().padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.inspections_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                Button(onClick = inspectionActions.onNew, enabled = property.rooms.isNotEmpty()) {
+                    Text(stringResource(R.string.inspection_new))
+                }
+            }
+            if (inspections.isEmpty()) {
+                Text(stringResource(R.string.inspections_empty))
+            }
+        }
+        items(inspections, key = { it.id }) { InspectionRow(it, inspectionActions.onOpen) }
+    }
+}
+
+@Composable
+private fun InspectionRow(
+    inspection: InspectionSummary,
+    onOpen: (UUID) -> Unit,
+) {
+    Card(onClick = { onOpen(inspection.id) }, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp)) {
+            Text(
+                inspection.title
+                    ?: stringResource(R.string.inspection_default_title, inspection.inspectedAt.localDate()),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Text(
+                stringResource(inspectionStatusLabel(inspection.status.name)) + " · " +
+                    stringResource(R.string.inspection_defect_count, inspection.defectCount),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
     }
 }
 

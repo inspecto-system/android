@@ -9,6 +9,7 @@ import dev.inspecto.android.api.models.PropertyDetails
 import dev.inspecto.android.api.models.Room
 import dev.inspecto.android.core.auth.SessionRepository
 import dev.inspecto.android.core.error.AppError
+import dev.inspecto.android.feature.inspections.InspectionRepository
 import dev.inspecto.android.testing.MainDispatcherExtension
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -37,6 +38,7 @@ class PropertyViewModelsTest {
     val main = MainDispatcherExtension()
 
     private val repository = mockk<PropertyRepository>(relaxed = true)
+    private val inspections = mockk<InspectionRepository>(relaxed = true)
     private val propertyId: UUID = UUID.randomUUID()
     private val now: OffsetDateTime = OffsetDateTime.parse("2026-11-05T10:00:00Z")
 
@@ -152,7 +154,11 @@ class PropertyViewModelsTest {
             val room = room("Кухня")
             coEvery { repository.details(propertyId) } returns details(listOf(room))
             val viewModel =
-                PropertyDetailsViewModel(SavedStateHandle(mapOf("propertyId" to propertyId.toString())), repository)
+                PropertyDetailsViewModel(
+                    SavedStateHandle(mapOf("propertyId" to propertyId.toString())),
+                    repository,
+                    inspections,
+                )
             advanceUntilIdle()
             assertEquals(
                 listOf(room),
@@ -177,7 +183,11 @@ class PropertyViewModelsTest {
             coEvery { repository.details(propertyId) } returns details(emptyList())
             coEvery { repository.addRoom(any(), any(), any()) } throws AppError.Api(404, "NOT_FOUND")
             val viewModel =
-                PropertyDetailsViewModel(SavedStateHandle(mapOf("propertyId" to propertyId.toString())), repository)
+                PropertyDetailsViewModel(
+                    SavedStateHandle(mapOf("propertyId" to propertyId.toString())),
+                    repository,
+                    inspections,
+                )
 
             viewModel.addRoom("Кухня", CreateRoomRequest.RoomType.KITCHEN)
             advanceUntilIdle()
