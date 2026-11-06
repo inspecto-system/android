@@ -178,6 +178,7 @@ kover {
                 // Generated code (CODE_QUALITY.md §5).
                 packages(
                     "dev.inspecto.android.api",
+                    "dev.inspecto.android.media.api",
                     "hilt_aggregated_deps",
                     "dagger.hilt.internal.aggregatedroot.codegen",
                 )
