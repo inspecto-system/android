@@ -142,4 +142,25 @@
     <string name="open_defect_resolved">Устранён</string>
     <string name="open_defect_not_marked">Не отмечен</string>
     <string name="inspection_unmarked_defects">Не отмечено дефектов прошлых осмотров: %1$d</string>
+
+    <!-- Photos -->
+    <string name="photo_title">Фото дефекта</string>
+    <string name="photo_done">Готово</string>
+    <string name="photo_take">Снять</string>
+    <string name="photo_permission">Чтобы фотографировать дефекты, разрешите доступ к камере.</string>
+    <string name="photo_count">Фото: %1$d</string>
+    <string name="photo_count_of">Фото: %1$d из %2$d</string>
+    <string name="photo_button">Сделать фото (%1$d)</string>
+    <string name="photo_button_of">Сделать фото (%1$d из %2$d)</string>
+    <string name="photo_limit_reached">Достигнут лимит фото для этого дефекта</string>
+    <string name="photo_capture_failed">Не удалось сделать снимок. Повторите.</string>
+    <string name="photo_save_failed">Не удалось сохранить снимок. Повторите.</string>
+    <string name="photo_queued">в очереди</string>
+    <string name="photo_failed">ошибка</string>
+    <string name="photo_queue_blocks_completion">Фото ещё не отправлено: %1$d. Завершить осмотр можно после отправки.</string>
+    <string name="photo_error_limit">Фото не прикреплено: у дефекта уже максимум фото.</string>
+    <string name="photo_error_completed">Фото не прикреплено: осмотр уже завершён.</string>
+    <string name="photo_error_too_large">Фото не принято сервером: слишком большое.</string>
+    <string name="photo_error_missing">Файл фото пропал с устройства.</string>
+    <string name="photo_error_other">Фото не отправлено: ошибка сервера.</string>
 </resources>

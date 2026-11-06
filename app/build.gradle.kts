@@ -19,6 +19,9 @@ plugins {
  */
 fun apiBaseUrl(default: String): String = providers.gradleProperty("inspecto.apiBaseUrl").getOrElse(default)
 
+/** Base URL of media-service: its own port in debug (10.0.2.2:8082), the same nginx host in release. */
+fun mediaBaseUrl(default: String): String = providers.gradleProperty("inspecto.mediaBaseUrl").getOrElse(default)
+
 android {
     namespace = "dev.inspecto.android"
     compileSdk = 37
@@ -35,9 +38,11 @@ android {
     buildTypes {
         debug {
             buildConfigField("String", "API_BASE_URL", "\"${apiBaseUrl("http://10.0.2.2:8081/api/v1/")}\"")
+            buildConfigField("String", "MEDIA_BASE_URL", "\"${mediaBaseUrl("http://10.0.2.2:8082/api/v1/")}\"")
         }
         release {
             buildConfigField("String", "API_BASE_URL", "\"${apiBaseUrl("https://10.0.2.2/api/v1/")}\"")
+            buildConfigField("String", "MEDIA_BASE_URL", "\"${mediaBaseUrl("https://10.0.2.2/api/v1/")}\"")
         }
     }
 
@@ -233,6 +238,19 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.androidx.datastore.preferences)
 
+    // Photos (T-307): CameraX capture, upload queue in Room processed by WorkManager.
+    implementation(libs.camerax.core)
+    implementation(libs.camerax.camera2)
+    implementation(libs.camerax.lifecycle)
+    implementation(libs.camerax.view)
+    implementation(libs.androidx.exifinterface)
+    implementation(libs.androidx.work.runtime)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
+
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
@@ -245,9 +263,15 @@ dependencies {
     testImplementation(libs.androidx.test.core)
     testImplementation(platform(libs.compose.bom))
     testImplementation(libs.compose.ui.test.junit4)
+    testImplementation(libs.androidx.work.testing)
 
     // Instrumented tests on a device or emulator: Android Keystore is not available on the JVM.
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.kotlinx.coroutines.test)
+}
+
+// Room schemas are kept in git: migrations of the local queue are checked against them (T-308).
+ksp {
+    arg("room.schemaLocation", file("schemas").path)
 }

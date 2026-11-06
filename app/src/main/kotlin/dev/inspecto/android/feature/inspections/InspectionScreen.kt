@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,10 +44,14 @@ import dev.inspecto.android.api.models.InspectionDetails
 import dev.inspecto.android.api.models.InspectionRoom
 import dev.inspecto.android.api.models.ObservationWithDefect
 import dev.inspecto.android.api.models.OpenDefect
+import dev.inspecto.android.feature.photos.PhotoQueueViewModel
+import dev.inspecto.android.feature.photos.PhotoStrip
+import dev.inspecto.android.feature.photos.PhotoStripActions
 import dev.inspecto.android.ui.components.ErrorText
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 
 /** Quick marks of a checklist item, in the order of the buttons. */
 private val quickMarks =
@@ -65,9 +70,30 @@ fun OffsetDateTime.localDate(): String = dateFormat.format(atZoneSameInstant(Zon
 @Composable
 fun InspectionScreen(
     onBack: () -> Unit,
+    onTakePhoto: (propertyId: UUID, observationId: UUID, attached: Int) -> Unit,
     viewModel: InspectionViewModel = hiltViewModel(),
+    photos: PhotoQueueViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val queue by photos.state.collectAsStateWithLifecycle()
+    // A photo leaves the queue once attached: reload so that it appears among the observation's photos.
+    LaunchedEffect(queue.attachedCount) { if (queue.attachedCount > 0) viewModel.reload() }
+    val photoSlot: @Composable (ObservationWithDefect) -> Unit = { observation ->
+        PhotoStrip(
+            attached = observation.photos.map { it.photoId },
+            pending = queue.pendingFor(observation.id),
+            max = queue.maxPerObservation,
+            editable = state.editable,
+            actions =
+                PhotoStripActions(
+                    onCamera = { onTakePhoto(observation.defect.propertyId, observation.id, observation.photos.size) },
+                    thumbnail = photos::thumbnail,
+                    preview = photos::preview,
+                    onRetry = photos::retry,
+                    onRemove = photos::remove,
+                ),
+        )
+    }
     val inspection = state.inspection
     Scaffold(
         topBar = {
@@ -87,7 +113,7 @@ fun InspectionScreen(
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             when {
-                inspection != null -> InspectionContent(inspection, state, viewModel)
+                inspection != null -> InspectionContent(inspection, state, viewModel, queue.pending.size, photoSlot)
                 state.loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 else ->
                     Column(Modifier.padding(16.dp)) {
@@ -113,9 +139,11 @@ private fun InspectionContent(
     inspection: InspectionDetails,
     state: InspectionState,
     viewModel: InspectionViewModel,
+    queuedPhotos: Int,
+    photoSlot: @Composable (ObservationWithDefect) -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
-        StatusBar(inspection, state, viewModel)
+        StatusBar(inspection, state, viewModel, queuedPhotos)
         if (inspection.rooms.isEmpty()) return@Column
         val roomIndex = state.roomIndex.coerceIn(0, inspection.rooms.lastIndex)
         PrimaryScrollableTabRow(selectedTabIndex = roomIndex, edgePadding = 16.dp) {
@@ -127,7 +155,7 @@ private fun InspectionContent(
                 )
             }
         }
-        RoomChecklist(inspection.rooms[roomIndex], state.openDefectsIn(roomIndex), state, viewModel)
+        RoomChecklist(inspection.rooms[roomIndex], state.openDefectsIn(roomIndex), state, viewModel, photoSlot)
     }
 }
 
@@ -136,6 +164,7 @@ private fun StatusBar(
     inspection: InspectionDetails,
     state: InspectionState,
     viewModel: InspectionViewModel,
+    queuedPhotos: Int,
 ) {
     var confirmComplete by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -157,12 +186,20 @@ private fun StatusBar(
                     Text(stringResource(R.string.inspection_start))
                 }
             }
-            InspectionDetails.Status.IN_PROGRESS ->
+            InspectionDetails.Status.IN_PROGRESS -> {
+                // Completion freezes the inspection: queued photos could no longer be attached.
+                if (queuedPhotos > 0) {
+                    Text(
+                        stringResource(R.string.photo_queue_blocks_completion, queuedPhotos),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
                 OutlinedButton(
                     onClick = { confirmComplete = true },
-                    enabled = !state.busy,
+                    enabled = !state.busy && queuedPhotos == 0,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(R.string.inspection_complete)) }
+            }
             InspectionDetails.Status.COMPLETED -> Unit
         }
     }
@@ -217,6 +254,7 @@ private fun RoomChecklist(
     openDefects: List<OpenDefect>,
     state: InspectionState,
     viewModel: InspectionViewModel,
+    photoSlot: @Composable (ObservationWithDefect) -> Unit,
 ) {
     val described = room.observations.mapNotNull { it.checklistItemId }.toSet()
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -240,7 +278,7 @@ private fun RoomChecklist(
                 Text(stringResource(R.string.defects_empty))
             }
         }
-        items(room.observations, key = { it.id }) { DefectRow(it, state.categories) }
+        items(room.observations, key = { it.id }) { DefectRow(it, state.categories, photoSlot) }
         if (state.editable) {
             item {
                 TextButton(onClick = { viewModel.showDefectDialog(DefectDraft.forRoom(room.room.id)) }) {
@@ -285,6 +323,7 @@ private fun ChecklistRow(
 private fun DefectRow(
     observation: ObservationWithDefect,
     categories: List<DefectCategory>,
+    photoSlot: @Composable (ObservationWithDefect) -> Unit,
 ) {
     val defect = observation.defect
     Card(Modifier.fillMaxWidth()) {
@@ -304,6 +343,7 @@ private fun DefectRow(
                 style = MaterialTheme.typography.bodySmall,
             )
             defect.description?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+            photoSlot(observation)
         }
     }
 }

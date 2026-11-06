@@ -18,6 +18,7 @@ import dev.inspecto.android.feature.auth.LoginScreen
 import dev.inspecto.android.feature.auth.RegisterScreen
 import dev.inspecto.android.feature.inspections.CreateInspectionScreen
 import dev.inspecto.android.feature.inspections.InspectionScreen
+import dev.inspecto.android.feature.photos.CameraScreen
 import dev.inspecto.android.feature.properties.CreatePropertyScreen
 import dev.inspecto.android.feature.properties.PropertyDetailsScreen
 import dev.inspecto.android.feature.properties.PropertyListScreen
@@ -84,8 +85,19 @@ private fun MainNavHost() {
                 },
             )
         }
-        composable<InspectionRoute> {
-            InspectionScreen(onBack = { navController.popBackStack() })
+        composable<InspectionRoute> { entry ->
+            val inspectionId = entry.toRoute<InspectionRoute>().inspectionId
+            InspectionScreen(
+                onBack = { navController.popBackStack() },
+                onTakePhoto = { propertyId, observationId, attached ->
+                    navController.navigate(
+                        CameraRoute(propertyId.toString(), inspectionId, observationId.toString(), attached),
+                    )
+                },
+            )
+        }
+        composable<CameraRoute> {
+            CameraScreen(onBack = { navController.popBackStack() })
         }
     }
 }

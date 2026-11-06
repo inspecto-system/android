@@ -4,6 +4,7 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import dev.inspecto.android.BuildConfig
 import dev.inspecto.android.api.apis.AuthApi
 import dev.inspecto.android.api.apis.ChecklistApi
 import dev.inspecto.android.api.apis.DefectsApi
@@ -11,6 +12,9 @@ import dev.inspecto.android.api.apis.DictionariesApi
 import dev.inspecto.android.api.apis.InspectionsApi
 import dev.inspecto.android.api.apis.PropertiesApi
 import dev.inspecto.android.api.apis.RoomsApi
+import dev.inspecto.android.media.api.apis.PhotosApi
+import kotlinx.serialization.json.Json
+import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import javax.inject.Singleton
 
@@ -60,6 +64,14 @@ object ApiModule {
     fun provideDefectsApi(
         @AuthorizedApi retrofit: Retrofit,
     ): DefectsApi = retrofit.create(DefectsApi::class.java)
+
+    /** media-service with the same access token: it checks tokens issued by core-service. */
+    @Provides
+    @Singleton
+    fun providePhotosApi(
+        @AuthorizedApi client: OkHttpClient,
+        json: Json,
+    ): PhotosApi = NetworkModule.retrofit(client, json, BuildConfig.MEDIA_BASE_URL).create(PhotosApi::class.java)
 
     @Provides
     @Singleton

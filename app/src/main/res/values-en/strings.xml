@@ -135,4 +135,25 @@
     <string name="open_defect_resolved">Resolved</string>
     <string name="open_defect_not_marked">Not marked</string>
     <string name="inspection_unmarked_defects">Defects of earlier inspections not marked: %1$d</string>
+
+    <!-- Photos -->
+    <string name="photo_title">Defect photo</string>
+    <string name="photo_done">Done</string>
+    <string name="photo_take">Shoot</string>
+    <string name="photo_permission">Allow camera access to photograph defects.</string>
+    <string name="photo_count">Photos: %1$d</string>
+    <string name="photo_count_of">Photos: %1$d of %2$d</string>
+    <string name="photo_button">Take photo (%1$d)</string>
+    <string name="photo_button_of">Take photo (%1$d of %2$d)</string>
+    <string name="photo_limit_reached">Photo limit reached for this defect</string>
+    <string name="photo_capture_failed">Could not take the shot. Try again.</string>
+    <string name="photo_save_failed">Could not save the shot. Try again.</string>
+    <string name="photo_queued">queued</string>
+    <string name="photo_failed">error</string>
+    <string name="photo_queue_blocks_completion">Photos not sent yet: %1$d. The inspection can be completed once they are sent.</string>
+    <string name="photo_error_limit">Photo not attached: the defect already has the maximum number of photos.</string>
+    <string name="photo_error_completed">Photo not attached: the inspection is already completed.</string>
+    <string name="photo_error_too_large">Photo rejected by the server: too large.</string>
+    <string name="photo_error_missing">The photo file is missing on the device.</string>
+    <string name="photo_error_other">Photo not sent: server error.</string>
 </resources>
