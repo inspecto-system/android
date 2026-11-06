@@ -136,4 +136,10 @@
     <string name="severity_major">Значительный</string>
     <string name="severity_critical">Критический</string>
     <string name="error_invalid_state">Осмотр уже завершён или изменил статус. Обновите экран.</string>
+    <string name="open_defects_title">Дефекты прошлых осмотров</string>
+    <string name="open_defects_hint">Отметьте каждый: остался он или устранён.</string>
+    <string name="open_defect_remains">Остался</string>
+    <string name="open_defect_resolved">Устранён</string>
+    <string name="open_defect_not_marked">Не отмечен</string>
+    <string name="inspection_unmarked_defects">Не отмечено дефектов прошлых осмотров: %1$d</string>
 </resources>

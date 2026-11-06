@@ -129,4 +129,10 @@
     <string name="severity_major">Major</string>
     <string name="severity_critical">Critical</string>
     <string name="error_invalid_state">The inspection is already completed or its status changed. Refresh the screen.</string>
+    <string name="open_defects_title">Defects of earlier inspections</string>
+    <string name="open_defects_hint">Mark each one as remaining or resolved.</string>
+    <string name="open_defect_remains">Remains</string>
+    <string name="open_defect_resolved">Resolved</string>
+    <string name="open_defect_not_marked">Not marked</string>
+    <string name="inspection_unmarked_defects">Defects of earlier inspections not marked: %1$d</string>
 </resources>

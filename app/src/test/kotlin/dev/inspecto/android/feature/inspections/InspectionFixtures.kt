@@ -7,7 +7,9 @@ import dev.inspecto.android.api.models.DefectCategory
 import dev.inspecto.android.api.models.Inspection
 import dev.inspecto.android.api.models.InspectionDetails
 import dev.inspecto.android.api.models.InspectionRoom
+import dev.inspecto.android.api.models.Observation
 import dev.inspecto.android.api.models.ObservationWithDefect
+import dev.inspecto.android.api.models.OpenDefect
 import dev.inspecto.android.api.models.Room
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -126,4 +128,39 @@ object InspectionFixtures {
             version = 4,
             completedAt = if (status == Inspection.Status.COMPLETED) now else null,
         )
+}
+
+/** Defect of an earlier inspection, open before this one; [current] is the decision already made here. */
+fun openDefect(
+    title: String,
+    room: Room = InspectionFixtures.kitchen,
+    current: Observation.Status? = null,
+): OpenDefect {
+    val defect =
+        InspectionFixtures
+            .observation(
+                null,
+                title,
+            ).defect
+            .copy(roomId = room.id, firstInspectionId = UUID.randomUUID())
+
+    fun observation(
+        status: Observation.Status,
+        inspectionId: UUID,
+    ) = Observation(
+        id = UUID.nameUUIDFromBytes((title + inspectionId).toByteArray()),
+        defectId = defect.id,
+        inspectionId = inspectionId,
+        status = status,
+        severity = Observation.Severity.MAJOR,
+        observedBy = UUID.randomUUID(),
+        photos = emptyList(),
+        createdAt = InspectionFixtures.now,
+        version = 2,
+    )
+    return OpenDefect(
+        defect = defect,
+        lastObservation = observation(Observation.Status.OPEN, defect.firstInspectionId),
+        currentObservation = current?.let { observation(it, InspectionFixtures.inspectionId) },
+    )
 }

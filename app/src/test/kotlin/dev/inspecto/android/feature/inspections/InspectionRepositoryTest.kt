@@ -1,7 +1,6 @@
 package dev.inspecto.android.feature.inspections
 
 import dev.inspecto.android.api.apis.ChecklistApi
-import dev.inspecto.android.api.apis.DefectsApi
 import dev.inspecto.android.api.apis.DictionariesApi
 import dev.inspecto.android.api.apis.InspectionsApi
 import dev.inspecto.android.api.models.ChecklistItem
@@ -32,7 +31,6 @@ class InspectionRepositoryTest {
         InspectionRepository(
             retrofit.create(InspectionsApi::class.java),
             retrofit.create(ChecklistApi::class.java),
-            retrofit.create(DefectsApi::class.java),
             retrofit.create(DictionariesApi::class.java),
         )
     private val inspectionJson =

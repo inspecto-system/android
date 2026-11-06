@@ -42,6 +42,7 @@ import dev.inspecto.android.api.models.DefectCategory
 import dev.inspecto.android.api.models.InspectionDetails
 import dev.inspecto.android.api.models.InspectionRoom
 import dev.inspecto.android.api.models.ObservationWithDefect
+import dev.inspecto.android.api.models.OpenDefect
 import dev.inspecto.android.ui.components.ErrorText
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -101,7 +102,7 @@ fun InspectionScreen(
             draft = draft,
             categories = state.categories,
             saving = state.busy,
-            onDismiss = viewModel::dismissDefect,
+            onDismiss = { viewModel.showDefectDialog(null) },
             onSave = viewModel::saveDefect,
         )
     }
@@ -126,7 +127,7 @@ private fun InspectionContent(
                 )
             }
         }
-        RoomChecklist(inspection.rooms[roomIndex], state, viewModel)
+        RoomChecklist(inspection.rooms[roomIndex], state.openDefectsIn(roomIndex), state, viewModel)
     }
 }
 
@@ -168,6 +169,7 @@ private fun StatusBar(
     if (confirmComplete) {
         CompleteDialog(
             uncheckedCount = state.uncheckedCount,
+            unmarkedDefects = state.unmarkedOpenDefects,
             onConfirm = {
                 confirmComplete = false
                 viewModel.complete()
@@ -180,6 +182,7 @@ private fun StatusBar(
 @Composable
 private fun CompleteDialog(
     uncheckedCount: Int,
+    unmarkedDefects: Int,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -195,6 +198,12 @@ private fun CompleteDialog(
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
+                if (unmarkedDefects > 0) {
+                    Text(
+                        stringResource(R.string.inspection_unmarked_defects, unmarkedDefects),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
         },
         confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.inspection_complete)) } },
@@ -205,18 +214,20 @@ private fun CompleteDialog(
 @Composable
 private fun RoomChecklist(
     room: InspectionRoom,
+    openDefects: List<OpenDefect>,
     state: InspectionState,
     viewModel: InspectionViewModel,
 ) {
     val described = room.observations.mapNotNull { it.checklistItemId }.toSet()
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        openDefectsSection(openDefects, enabled = state.editable && !state.busy, onMark = viewModel::markOpenDefect)
         items(room.checklist, key = { it.id }) { item ->
             ChecklistRow(
                 item = item,
                 enabled = state.editable && !state.busy,
                 needsDefect = state.editable && item.result == ChecklistItem.Result.DEFECT && item.id !in described,
                 onMark = { viewModel.mark(item, it) },
-                onDescribe = { viewModel.openDefect(DefectDraft.forItem(item)) },
+                onDescribe = { viewModel.showDefectDialog(DefectDraft.forItem(item)) },
             )
         }
         item {
@@ -232,7 +243,7 @@ private fun RoomChecklist(
         items(room.observations, key = { it.id }) { DefectRow(it, state.categories) }
         if (state.editable) {
             item {
-                TextButton(onClick = { viewModel.openDefect(DefectDraft.forRoom(room.room.id)) }) {
+                TextButton(onClick = { viewModel.showDefectDialog(DefectDraft.forRoom(room.room.id)) }) {
                     Text(stringResource(R.string.defect_add))
                 }
             }
@@ -281,6 +292,11 @@ private fun DefectRow(
             Text(defect.title, style = MaterialTheme.typography.titleSmall)
             Text(
                 listOfNotNull(
+                    if (observation.status == ObservationWithDefect.Status.RESOLVED) {
+                        stringResource(R.string.open_defect_resolved)
+                    } else {
+                        null
+                    },
                     stringResource(severityLabel(observation.severity.name)),
                     categories.firstOrNull { it.id == defect.categoryId }?.name,
                     stringResource(elementGroupLabel(defect.elementGroup.name)),

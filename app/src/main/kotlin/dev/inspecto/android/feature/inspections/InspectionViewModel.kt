@@ -10,6 +10,8 @@ import dev.inspecto.android.api.models.CreateDefectRequest
 import dev.inspecto.android.api.models.DefectCategory
 import dev.inspecto.android.api.models.Inspection
 import dev.inspecto.android.api.models.InspectionDetails
+import dev.inspecto.android.api.models.Observation
+import dev.inspecto.android.api.models.OpenDefect
 import dev.inspecto.android.core.error.AppError
 import dev.inspecto.android.core.error.messageRes
 import kotlinx.coroutines.async
@@ -60,8 +62,22 @@ data class InspectionState(
     val busy: Boolean = false,
     @StringRes val errorRes: Int? = null,
     val defectDraft: DefectDraft? = null,
+    val openDefects: List<OpenDefect> = emptyList(),
 ) {
     val editable: Boolean get() = inspection?.status == InspectionDetails.Status.IN_PROGRESS
+
+    /** Defects open since earlier inspections not yet marked as remaining or resolved. */
+    val unmarkedOpenDefects: Int get() = openDefects.count { it.currentObservation == null }
+
+    /**
+     * Open defects shown on a room tab; defects of rooms outside this inspection are shown on the
+     * first tab, so none of them is hidden.
+     */
+    fun openDefectsIn(roomIndex: Int): List<OpenDefect> {
+        val rooms = inspection?.rooms.orEmpty().map { it.room.id }
+        val roomId = rooms.getOrNull(roomIndex) ?: return emptyList()
+        return openDefects.filter { it.defect.roomId == roomId || (roomIndex == 0 && it.defect.roomId !in rooms) }
+    }
 
     /** Checklist items still without a result, shown before completion. */
     val uncheckedCount: Int
@@ -81,6 +97,7 @@ class InspectionViewModel
     constructor(
         savedStateHandle: SavedStateHandle,
         private val repository: InspectionRepository,
+        private val defects: DefectRepository,
     ) : ViewModel() {
         private val inspectionId: UUID = UUID.fromString(checkNotNull(savedStateHandle.get<String>("inspectionId")))
         private val mutableState = MutableStateFlow(InspectionState())
@@ -94,9 +111,30 @@ class InspectionViewModel
         fun reload() =
             run(showLoading = true) {
                 val details = async { repository.details(inspectionId) }
-                val categories = async { repository.categories() }
-                mutableState.update { it.copy(inspection = details.await(), categories = categories.await()) }
+                val categories = async { defects.categories() }
+                val openDefects = async { defects.openDefects(inspectionId) }
+                mutableState.update {
+                    it.copy(
+                        inspection = details.await(),
+                        categories = categories.await(),
+                        openDefects = openDefects.await(),
+                    )
+                }
             }
+
+        /**
+         * Explicit decision of a repeat inspection about a defect found earlier: it remains (OPEN) or
+         * is resolved (RESOLVED, ADR-004). A second decision changes the observation of this inspection.
+         */
+        fun markOpenDefect(
+            openDefect: OpenDefect,
+            status: Observation.Status,
+        ) = run {
+            defects.recordObservation(inspectionId, openDefect, status)
+            val details = async { repository.details(inspectionId) }
+            val openDefects = async { defects.openDefects(inspectionId) }
+            mutableState.update { it.copy(inspection = details.await(), openDefects = openDefects.await()) }
+        }
 
         fun selectRoom(index: Int) = mutableState.update { it.copy(roomIndex = index) }
 
@@ -112,19 +150,17 @@ class InspectionViewModel
             val updated = repository.setResult(item, result)
             mutableState.update { it.copy(inspection = it.inspection?.withItem(updated)) }
             if (result == ChecklistItem.Result.DEFECT && !state.value.hasDefect(item.id)) {
-                openDefect(DefectDraft.forItem(item))
+                showDefectDialog(DefectDraft.forItem(item))
             }
         }
 
-        /** Opens the defect dialog. */
-        fun openDefect(draft: DefectDraft) = mutableState.update { it.copy(defectDraft = draft) }
-
-        fun dismissDefect() = mutableState.update { it.copy(defectDraft = null) }
+        /** Opens the defect dialog for a draft, or closes it for null. */
+        fun showDefectDialog(draft: DefectDraft?) = mutableState.update { it.copy(defectDraft = draft) }
 
         fun saveDefect(form: DefectForm) {
             val draft = state.value.defectDraft ?: return
             run {
-                repository.createDefect(
+                defects.createDefect(
                     inspectionId,
                     CreateDefectRequest(
                         roomId = draft.roomId,
