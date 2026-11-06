@@ -13,6 +13,7 @@ import androidx.lifecycle.SavedStateHandle
 import dev.inspecto.android.api.models.ChecklistItem
 import dev.inspecto.android.api.models.Inspection
 import dev.inspecto.android.api.models.InspectionDetails
+import dev.inspecto.android.api.models.Observation
 import dev.inspecto.android.api.models.PropertyDetails
 import dev.inspecto.android.feature.inspections.InspectionFixtures.bedroom
 import dev.inspecto.android.feature.inspections.InspectionFixtures.cracks
@@ -44,6 +45,7 @@ class InspectionScreensTest {
     val compose = createComposeRule()
 
     private val repository = mockk<InspectionRepository>(relaxed = true)
+    private val defects = mockk<DefectRepository>(relaxed = true)
 
     @Test
     fun newInspectionListsRoomsAndTemplates() {
@@ -102,7 +104,7 @@ class InspectionScreensTest {
     fun defectMarkOpensDefectDialog() {
         val walls = item("Стены без трещин")
         coEvery { repository.details(inspectionId) } returns details(kitchenItems = listOf(walls))
-        coEvery { repository.categories() } returns listOf(cracks)
+        coEvery { defects.categories() } returns listOf(cracks)
         coEvery { repository.setResult(walls, ChecklistItem.Result.DEFECT) } returns
             walls.copy(result = ChecklistItem.Result.DEFECT)
         showInspection()
@@ -120,7 +122,7 @@ class InspectionScreensTest {
         val walls = item("Стены без трещин", result = ChecklistItem.Result.DEFECT)
         coEvery { repository.details(inspectionId) } returns
             details(kitchenItems = listOf(walls), observations = listOf(observation(walls, "Трещина у окна")))
-        coEvery { repository.categories() } returns listOf(cracks)
+        coEvery { defects.categories() } returns listOf(cracks)
         showInspection()
 
         compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Трещина у окна"))
@@ -142,9 +144,27 @@ class InspectionScreensTest {
         coVerify { repository.complete(any()) }
     }
 
+    @Test
+    fun repeatInspectionAsksToMarkEarlierDefects() {
+        val crack = openDefect("Трещина с прошлого раза")
+        coEvery { repository.details(inspectionId) } returns details()
+        coEvery { defects.openDefects(inspectionId) } returns listOf(crack)
+        coEvery { repository.complete(any()) } returns inspection(Inspection.Status.COMPLETED)
+        showInspection()
+
+        compose.onNodeWithText("Дефекты прошлых осмотров").assertIsDisplayed()
+        compose.onNodeWithText("Не отмечен").assertIsDisplayed()
+        compose.onNodeWithText("Устранён").performClick()
+        compose.waitForIdle()
+        coVerify { defects.recordObservation(inspectionId, crack, Observation.Status.RESOLVED) }
+
+        compose.onNodeWithText("Завершить осмотр").performClick()
+        compose.onNodeWithText("Не отмечено дефектов прошлых осмотров: 1").assertIsDisplayed()
+    }
+
     private fun showInspection() {
         val viewModel =
-            InspectionViewModel(SavedStateHandle(mapOf("inspectionId" to inspectionId.toString())), repository)
+            InspectionViewModel(SavedStateHandle(mapOf("inspectionId" to inspectionId.toString())), repository, defects)
         compose.setContent { InspectoTheme { InspectionScreen(onBack = {}, viewModel = viewModel) } }
     }
 }

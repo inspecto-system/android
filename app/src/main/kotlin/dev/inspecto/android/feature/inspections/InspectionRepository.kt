@@ -1,15 +1,11 @@
 package dev.inspecto.android.feature.inspections
 
 import dev.inspecto.android.api.apis.ChecklistApi
-import dev.inspecto.android.api.apis.DefectsApi
 import dev.inspecto.android.api.apis.DictionariesApi
 import dev.inspecto.android.api.apis.InspectionsApi
 import dev.inspecto.android.api.models.ChecklistItem
 import dev.inspecto.android.api.models.ChecklistTemplate
-import dev.inspecto.android.api.models.CreateDefectRequest
 import dev.inspecto.android.api.models.CreateInspectionRequest
-import dev.inspecto.android.api.models.DefectCategory
-import dev.inspecto.android.api.models.DefectDetails
 import dev.inspecto.android.api.models.Inspection
 import dev.inspecto.android.api.models.InspectionDetails
 import dev.inspecto.android.api.models.InspectionSummary
@@ -22,6 +18,9 @@ import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 
+/** Language of dictionary names and checklist titles: English if the device uses it, else Russian. */
+internal fun apiLanguage(): String = if (Locale.getDefault().language == "en") "EN" else "RU"
+
 /** What the inspector chose on the "new inspection" screen. */
 data class NewInspection(
     val roomIds: List<UUID>,
@@ -30,13 +29,12 @@ data class NewInspection(
     val inspectedAt: OffsetDateTime,
 )
 
-/** Inspections, checklists, defects and dictionaries (platform/api/core.yaml). */
+/** Inspections, checklists and checklist templates (platform/api/core.yaml). */
 class InspectionRepository
     @Inject
     constructor(
         private val inspections: InspectionsApi,
         private val checklist: ChecklistApi,
-        private val defects: DefectsApi,
         private val dictionaries: DictionariesApi,
     ) {
         /** Inspection history of a property, newest first. */
@@ -46,14 +44,7 @@ class InspectionRepository
         suspend fun templates(): List<ChecklistTemplate> =
             apiCall {
                 dictionaries.listChecklistTemplates(
-                    DictionariesApi.AcceptLanguageListChecklistTemplates.valueOf(language()),
-                )
-            }
-
-        suspend fun categories(): List<DefectCategory> =
-            apiCall {
-                dictionaries.listDefectCategories(
-                    DictionariesApi.AcceptLanguageListDefectCategories.valueOf(language()),
+                    DictionariesApi.AcceptLanguageListChecklistTemplates.valueOf(apiLanguage()),
                 )
             }
 
@@ -71,7 +62,7 @@ class InspectionRepository
                         templateCodes = draft.templateCodes.toSet(),
                         title = draft.title.trim().ifEmpty { null },
                     ),
-                    InspectionsApi.AcceptLanguageCreateInspection.valueOf(language()),
+                    InspectionsApi.AcceptLanguageCreateInspection.valueOf(apiLanguage()),
                 )
             }
 
@@ -107,16 +98,8 @@ class InspectionRepository
                 )
             }
 
-        suspend fun createDefect(
-            inspectionId: UUID,
-            request: CreateDefectRequest,
-        ): DefectDetails = apiCall { defects.createDefect(inspectionId, request) }
-
         private companion object {
             /** The API allows up to 100 items per page; a property has far fewer inspections. */
             const val PAGE_SIZE = 100
-
-            /** Language of dictionary names and checklist titles: English if the device uses it, else Russian. */
-            fun language(): String = if (Locale.getDefault().language == "en") "EN" else "RU"
         }
     }

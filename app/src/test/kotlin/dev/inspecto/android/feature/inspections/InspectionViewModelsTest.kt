@@ -46,6 +46,7 @@ class InspectionViewModelsTest {
 
     private val properties = mockk<PropertyRepository>(relaxed = true)
     private val repository = mockk<InspectionRepository>(relaxed = true)
+    private val defects = mockk<DefectRepository>(relaxed = true)
 
     @Test
     fun shouldPreselectAllRoomsAndStandardTemplate() =
@@ -203,11 +204,11 @@ class InspectionViewModelsTest {
                     details(kitchenItems = listOf(walls), observations = listOf(observation(walls, "Трещина"))),
                 )
             val request = slot<CreateDefectRequest>()
-            coEvery { repository.createDefect(inspectionId, capture(request)) } returns mockk()
+            coEvery { defects.createDefect(inspectionId, capture(request)) } returns mockk()
             val viewModel = inspectionViewModel()
             advanceUntilIdle()
 
-            viewModel.openDefect(DefectDraft.forItem(walls))
+            viewModel.showDefectDialog(DefectDraft.forItem(walls))
             viewModel.saveDefect(
                 DefectForm(
                     categoryId = cracks.id,
@@ -249,12 +250,12 @@ class InspectionViewModelsTest {
             advanceUntilIdle()
 
             viewModel.selectRoom(1)
-            viewModel.openDefect(DefectDraft.forRoom(bedroom.id))
+            viewModel.showDefectDialog(DefectDraft.forRoom(bedroom.id))
             assertEquals(
                 DefectDraft(bedroom.id, null, CreateDefectRequest.ElementGroup.OTHER, ""),
                 viewModel.state.value.defectDraft,
             )
-            viewModel.dismissDefect()
+            viewModel.showDefectDialog(null)
             viewModel.saveDefect(
                 DefectForm(
                     cracks.id,
@@ -268,7 +269,7 @@ class InspectionViewModelsTest {
 
             assertNull(viewModel.state.value.defectDraft)
             assertEquals(1, viewModel.state.value.roomIndex)
-            coVerify(exactly = 0) { repository.createDefect(any(), any()) }
+            coVerify(exactly = 0) { defects.createDefect(any(), any()) }
         }
 
     @Test
@@ -307,7 +308,7 @@ class InspectionViewModelsTest {
         )
 
     private fun inspectionViewModel() =
-        InspectionViewModel(SavedStateHandle(mapOf("inspectionId" to inspectionId.toString())), repository)
+        InspectionViewModel(SavedStateHandle(mapOf("inspectionId" to inspectionId.toString())), repository, defects)
 
     private fun firstKitchenItem(viewModel: InspectionViewModel) =
         checkNotNull(viewModel.state.value.inspection)
