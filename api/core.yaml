@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Inspecto core-service API
-  version: 0.2.1
+  version: 0.4.0
   description: |
     Authentication, users, properties, rooms, dictionaries, inspections, checklists,
     defects, observations, comparison, statistics and ML suggestions.
@@ -441,7 +441,10 @@ paths:
     delete:
       tags: [rooms]
       operationId: deleteRoom
-      summary: Delete a room without defects
+      summary: Delete a room that is not used
+      description: |
+        A room that appears in an inspection checklist or has defects cannot be deleted
+        (`409 RESOURCE_IN_USE`): completed inspections must keep their content.
       responses:
         '204':
           description: Deleted.
@@ -546,6 +549,7 @@ paths:
       tags: [dictionaries]
       operationId: deleteOwnDefectCategory
       summary: Delete an unused own category
+      description: A category used by defects cannot be deleted (`409 RESOURCE_IN_USE`); deactivate it instead.
       responses:
         '204':
           description: Deleted.
@@ -675,7 +679,12 @@ paths:
       tags: [inspections]
       operationId: createInspection
       summary: Create an inspection with its checklist
-      description: Checklist items are created for every selected room × every item of the selected templates in one transaction.
+      description: |
+        Checklist items are created for every selected room × every item of the selected templates in one transaction.
+        Item titles are copied in the language of `Accept-Language`. The new inspection is `DRAFT`.
+        Rooms of another property and unknown template codes are rejected with `400 VALIDATION_ERROR`.
+      parameters:
+        - $ref: 'common.yaml#/components/parameters/AcceptLanguage'
       requestBody:
         required: true
         content:
@@ -718,6 +727,9 @@ paths:
       tags: [inspections]
       operationId: updateInspection
       summary: Update title, date, notes or start the inspection
+      description: |
+        Sending `status: IN_PROGRESS` starts a draft; repeating it for a started inspection changes nothing.
+        A completed inspection cannot be changed (`409 INVALID_STATE_TRANSITION`).
       requestBody:
         required: true
         content:
@@ -743,6 +755,10 @@ paths:
       tags: [inspections]
       operationId: deleteInspection
       summary: Delete a draft inspection
+      description: |
+        Only `DRAFT` inspections can be deleted; otherwise `409 INVALID_STATE_TRANSITION`. Defects first found in
+        the draft are deleted with it. A draft that observes earlier defects, or whose defects were observed in
+        other inspections, cannot be deleted (`409 RESOURCE_IN_USE`).
       responses:
         '204':
           description: Deleted.
@@ -760,6 +776,7 @@ paths:
       tags: [inspections]
       operationId: completeInspection
       summary: Complete the inspection (further changes are forbidden)
+      description: Only an `IN_PROGRESS` inspection can be completed; otherwise `409 INVALID_STATE_TRANSITION`.
       requestBody:
         required: true
         content:
@@ -787,6 +804,9 @@ paths:
       tags: [checklist]
       operationId: addCustomChecklistItem
       summary: Add a custom checklist item
+      description: |
+        The room must belong to the property of the inspection (`400 VALIDATION_ERROR` otherwise).
+        The checklist of a completed inspection cannot be changed (`409 INVALID_STATE_TRANSITION`).
       requestBody:
         required: true
         content:
@@ -816,6 +836,9 @@ paths:
       tags: [checklist]
       operationId: updateChecklistItem
       summary: Set result and comment
+      description: |
+        Absent fields keep their values; `comment: null` clears the comment.
+        Items of a completed inspection cannot be changed (`409 INVALID_STATE_TRANSITION`).
       requestBody:
         required: true
         content:
@@ -845,6 +868,7 @@ paths:
       tags: [defects]
       operationId: listDefects
       summary: Defects of a property
+      description: Newest first. `currentStatus` is the status of the observation in the latest inspection by `inspectedAt`.
       parameters:
         - $ref: 'common.yaml#/components/parameters/Page'
         - $ref: 'common.yaml#/components/parameters/Size'
@@ -879,6 +903,11 @@ paths:
       tags: [defects]
       operationId: createDefect
       summary: Register a new defect with its first observation
+      description: |
+        Creates the defect and its `OPEN` observation in this inspection. The room must belong to the property,
+        the category must be active and visible to the user, the checklist item (if given) must be an item of
+        this inspection in the same room; otherwise `400 VALIDATION_ERROR`. A completed inspection cannot be
+        changed (`409 INVALID_STATE_TRANSITION`).
       requestBody:
         required: true
         content:
@@ -923,6 +952,8 @@ paths:
       tags: [defects]
       operationId: updateDefect
       summary: Update category, title, description or severity
+      description: |
+        Absent fields keep their values; `description: null` clears it. The category must be active and visible to the user.
       requestBody:
         required: true
         content:
@@ -952,6 +983,7 @@ paths:
       tags: [defects]
       operationId: getDefectHistory
       summary: Status history of a defect
+      description: A change is recorded whenever `currentStatus` changes, including the creation of the defect (`fromStatus` is null).
       responses:
         '200':
           description: History, oldest first.
@@ -973,6 +1005,10 @@ paths:
       tags: [defects]
       operationId: listOpenDefectsForInspection
       summary: Defects open before this inspection, to be marked during a repeat inspection
+      description: |
+        Defects of the property that were first found in an earlier inspection and whose latest observation
+        among inspections earlier than this one (by `inspectedAt`) is `OPEN`. `lastObservation` is that
+        observation.
       responses:
         '200':
           description: Open defects with the observation in this inspection, if already made.
@@ -994,6 +1030,11 @@ paths:
       tags: [defects]
       operationId: createObservation
       summary: Record an existing defect in this inspection (still open or confirmed resolved)
+      description: |
+        The defect must belong to the property of the inspection, the checklist item (if given) must be an item of
+        this inspection in the room of the defect (`400 VALIDATION_ERROR`). One observation per defect and
+        inspection (`409 ALREADY_OBSERVED`); a completed inspection cannot be changed (`409 INVALID_STATE_TRANSITION`).
+        Without `severity` the current severity of the defect is used.
       requestBody:
         required: true
         content:
@@ -1023,6 +1064,8 @@ paths:
       tags: [defects]
       operationId: updateObservation
       summary: Update an observation
+      description: |
+        Absent fields keep their values; `comment: null` clears it. Observations of a completed inspection cannot be changed (`409 INVALID_STATE_TRANSITION`).
       requestBody:
         required: true
         content:
@@ -1052,6 +1095,13 @@ paths:
       tags: [defects]
       operationId: attachPhoto
       summary: Attach an uploaded photo to an observation
+      description: |
+        The photo must have been uploaded to media-service by the same user for the property of the
+        observation (`400 VALIDATION_ERROR` otherwise). Repeating the request for an already attached
+        photo returns it again. Errors: `400 PHOTO_LIMIT_EXCEEDED` (the observation has the maximum
+        number of photos, see `GET /photos/limits`), `409 RESOURCE_IN_USE` (the photo belongs to another
+        observation), `409 INVALID_STATE_TRANSITION` (completed inspection), `503 DEPENDENCY_UNAVAILABLE`
+        (media-service cannot be reached).
       requestBody:
         required: true
         content:
@@ -1083,7 +1133,11 @@ paths:
     delete:
       tags: [defects]
       operationId: detachPhoto
-      summary: Detach a photo (media-service removes it after 24 h)
+      summary: Detach and delete a photo
+      description: |
+        The photo is removed from the observation at once; its files are deleted by a clean-up job of
+        core-service through media-service, with retries until it succeeds (ADR-018). A completed
+        inspection cannot be changed (`409 INVALID_STATE_TRANSITION`).
       responses:
         '204':
           description: Detached.
