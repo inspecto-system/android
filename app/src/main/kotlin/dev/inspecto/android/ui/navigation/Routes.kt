@@ -34,3 +34,12 @@ data class CreateInspectionRoute(
 data class InspectionRoute(
     val inspectionId: String,
 ) : Route
+
+/** Camera of an observation; [attached] photos already on the server count against the limit. */
+@Serializable
+data class CameraRoute(
+    val propertyId: String,
+    val inspectionId: String,
+    val observationId: String,
+    val attached: Int,
+) : Route

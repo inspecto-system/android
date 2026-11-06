@@ -111,6 +111,7 @@ object NetworkModule {
             .baseUrl(baseUrl)
             .client(client)
             .addConverterFactory(EnumValueConverterFactory())
+            .addConverterFactory(FormFieldConverterFactory())
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
 }
