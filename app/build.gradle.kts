@@ -154,6 +154,12 @@ val openApiGenerateMedia by tasks.registering(org.openapitools.generator.gradle.
     generateModelDocumentation.set(false)
 }
 
+// The spec is passed as a URI string, so Gradle does not see its content: without these inputs a
+// changed contract could reuse a client generated from the previous one (up-to-date check, build cache).
+tasks.withType<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>().configureEach {
+    inputs.files(rootProject.fileTree("api") { include("*.yaml") }).withPropertyName("contract")
+}
+
 tasks.named("preBuild") { dependsOn("openApiGenerate", openApiGenerateMedia) }
 
 // ---------- Code quality (CODE_QUALITY.md §2) ----------
