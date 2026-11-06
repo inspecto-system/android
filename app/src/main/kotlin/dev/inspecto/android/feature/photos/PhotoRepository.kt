@@ -11,6 +11,7 @@ import dev.inspecto.android.core.db.PendingPhoto
 import dev.inspecto.android.core.db.PendingPhotoDao
 import dev.inspecto.android.core.error.apiCall
 import dev.inspecto.android.core.network.AuthorizedApi
+import dev.inspecto.android.feature.drafts.SyncWorker
 import dev.inspecto.android.media.api.apis.PhotosApi
 import dev.inspecto.android.media.api.models.PhotoLimits
 import kotlinx.coroutines.Dispatchers
@@ -24,11 +25,15 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Where a photo belongs: identifiers on the server (the observation may still be local, T-308). */
+/**
+ * Where a photo belongs. An observation created without a network has only [observationKey] (its id
+ * on the device); the photo waits until the server creates it (T-308).
+ */
 data class PhotoTarget(
     val propertyId: UUID,
     val inspectionId: UUID,
     val observationId: UUID?,
+    val observationKey: UUID? = null,
 )
 
 /** Photos of observations: the local upload queue, limits and thumbnails from media-service. */
@@ -70,17 +75,18 @@ class PhotoRepository
                     propertyId = target.propertyId.toString(),
                     inspectionId = target.inspectionId.toString(),
                     observationId = target.observationId?.toString(),
+                    observationKey = target.observationKey?.toString(),
                     filePath = file.path,
                     createdAt = System.currentTimeMillis(),
                 ),
             )
-            PhotoUploadWorker.schedule(WorkManager.getInstance(context))
+            SyncWorker.schedule(WorkManager.getInstance(context))
         }
 
         /** Sends a photo again after an error (for example, after a photo of the observation was removed). */
         suspend fun retry(photo: PendingPhoto) {
             dao.setError(photo.id, null)
-            PhotoUploadWorker.schedule(WorkManager.getInstance(context))
+            SyncWorker.schedule(WorkManager.getInstance(context))
         }
 
         /** Removes a photo from the queue; an uploaded but unattached copy is deleted by media-service in 24 h. */

@@ -1,13 +1,10 @@
 package dev.inspecto.android.feature.inspections
 
-import dev.inspecto.android.api.apis.ChecklistApi
 import dev.inspecto.android.api.apis.DictionariesApi
 import dev.inspecto.android.api.apis.InspectionsApi
-import dev.inspecto.android.api.models.ChecklistItem
 import dev.inspecto.android.feature.inspections.InspectionFixtures.bedroom
 import dev.inspecto.android.feature.inspections.InspectionFixtures.details
 import dev.inspecto.android.feature.inspections.InspectionFixtures.inspectionId
-import dev.inspecto.android.feature.inspections.InspectionFixtures.item
 import dev.inspecto.android.feature.inspections.InspectionFixtures.kitchen
 import dev.inspecto.android.feature.inspections.InspectionFixtures.now
 import dev.inspecto.android.feature.inspections.InspectionFixtures.propertyId
@@ -30,7 +27,6 @@ class InspectionRepositoryTest {
     private val repository =
         InspectionRepository(
             retrofit.create(InspectionsApi::class.java),
-            retrofit.create(ChecklistApi::class.java),
             retrofit.create(DictionariesApi::class.java),
         )
     private val inspectionJson =
@@ -91,24 +87,6 @@ class InspectionRepositoryTest {
             val complete = server.server.takeRequest()
             assertEquals("/api/v1/inspections/$inspectionId/complete", complete.url.encodedPath)
             assertEquals("""{"version":3}""", complete.body?.utf8())
-        }
-
-    @Test
-    fun shouldSendChecklistResultWithItemVersion() =
-        runTest {
-            val walls = item("Стены")
-            server.enqueue(
-                200,
-                """{"id":"${walls.id}","inspectionId":"$inspectionId","roomId":"${kitchen.id}","elementGroup":"WALLS",
-                    "title":"Стены","result":"OK","custom":false,"sortOrder":0,"version":1}""",
-            )
-
-            val updated = repository.setResult(walls, ChecklistItem.Result.OK)
-
-            val request = server.server.takeRequest()
-            assertEquals("/api/v1/checklist-items/${walls.id}", request.url.encodedPath)
-            assertEquals("""{"version":0,"result":"OK"}""", request.body?.utf8())
-            assertEquals(ChecklistItem.Result.OK, updated.result)
         }
 
     private fun body(text: String?): JsonObject = Json.parseToJsonElement(checkNotNull(text)).jsonObject

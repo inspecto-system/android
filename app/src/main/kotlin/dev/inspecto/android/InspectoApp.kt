@@ -5,7 +5,7 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import androidx.work.WorkManager
 import dagger.hilt.android.HiltAndroidApp
-import dev.inspecto.android.feature.photos.PhotoUploadWorker
+import dev.inspecto.android.feature.drafts.SyncWorker
 import javax.inject.Inject
 
 /**
@@ -26,6 +26,6 @@ class InspectoApp :
     override fun onCreate() {
         super.onCreate()
         // Photos left in the queue by an earlier run (app killed, failed pass) are sent again.
-        PhotoUploadWorker.schedule(WorkManager.getInstance(this))
+        SyncWorker.schedule(WorkManager.getInstance(this))
     }
 }

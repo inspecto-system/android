@@ -9,6 +9,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.inspecto.android.R
 import dev.inspecto.android.core.db.PendingPhoto
 import dev.inspecto.android.core.error.AppError
+import dev.inspecto.android.feature.drafts.DraftNotices
+import dev.inspecto.android.feature.drafts.DraftRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,21 +27,22 @@ data class PhotoQueueState(
     val maxPerObservation: Int? = null,
     /** Grows when queued photos leave the queue attached: the inspection is then reloaded to show them. */
     val attachedCount: Int = 0,
+    /** Changes dropped because the inspection was completed on the server; null without a notice. */
+    val droppedChanges: Int? = null,
 ) {
-    fun pendingFor(observationId: UUID): List<PendingPhoto> =
-        pending.filter {
-            it.observationId ==
-                observationId.toString()
-        }
+    /** Queued photos of an observation, also of one that exists only on the device. */
+    fun pendingFor(observationId: UUID): List<PendingPhoto> = pending.filter { it.belongsTo(observationId) }
 }
 
-/** Photo queue of an inspection, shown next to its observations. */
+/** Offline queue of an inspection as the inspector manages it: photos, rejected changes, notices. */
 @HiltViewModel
 class PhotoQueueViewModel
     @Inject
     constructor(
         savedStateHandle: SavedStateHandle,
         private val repository: PhotoRepository,
+        private val drafts: DraftRepository,
+        private val notices: DraftNotices,
     ) : ViewModel() {
         private val inspectionId: UUID = UUID.fromString(checkNotNull(savedStateHandle.get<String>("inspectionId")))
         private val mutableState = MutableStateFlow(PhotoQueueState())
@@ -60,6 +63,11 @@ class PhotoQueueViewModel
                 }
             }
             viewModelScope.launch {
+                notices.observe(inspectionId).collect { dropped ->
+                    mutableState.update { it.copy(droppedChanges = dropped) }
+                }
+            }
+            viewModelScope.launch {
                 try {
                     val limits = repository.limits()
                     mutableState.update { it.copy(maxPerObservation = limits.maxPhotosPerObservation) }
@@ -67,6 +75,15 @@ class PhotoQueueViewModel
                     // Without the limits the camera stays available; an extra photo fails with PHOTO_LIMIT_EXCEEDED.
                 }
             }
+        }
+
+        /** Drops the changes the server rejected for good (the inspector confirmed it). */
+        fun discardFailedChanges() {
+            viewModelScope.launch { drafts.discardFailed(inspectionId) }
+        }
+
+        fun dismissNotice() {
+            viewModelScope.launch { notices.dismiss(inspectionId) }
         }
 
         fun retry(photo: PendingPhoto) {
@@ -101,11 +118,14 @@ class CameraViewModel
         savedStateHandle: SavedStateHandle,
         private val repository: PhotoRepository,
     ) : ViewModel() {
+        private val observation = UUID.fromString(checkNotNull(savedStateHandle.get<String>("observationId")))
+        private val local: Boolean = savedStateHandle.get<Boolean>("local") ?: false
         private val target =
             PhotoTarget(
                 propertyId = UUID.fromString(checkNotNull(savedStateHandle.get<String>("propertyId"))),
                 inspectionId = UUID.fromString(checkNotNull(savedStateHandle.get<String>("inspectionId"))),
-                observationId = UUID.fromString(checkNotNull(savedStateHandle.get<String>("observationId"))),
+                observationId = observation.takeUnless { local },
+                observationKey = observation.takeIf { local },
             )
         private val attached: Int = savedStateHandle.get<Int>("attached") ?: 0
         private val mutableState = MutableStateFlow(CameraState(count = attached))
@@ -115,7 +135,7 @@ class CameraViewModel
         init {
             viewModelScope.launch {
                 repository.pending(target.inspectionId).collect { list ->
-                    val queued = list.count { it.observationId == target.observationId.toString() }
+                    val queued = list.count { it.belongsTo(observation) }
                     mutableState.update { it.copy(count = attached + queued) }
                 }
             }
@@ -147,3 +167,7 @@ class CameraViewModel
 
         fun onCaptureFailed() = mutableState.update { it.copy(errorRes = R.string.photo_capture_failed) }
     }
+
+/** Whether a queued photo belongs to an observation, by its server id or by its id on the device. */
+fun PendingPhoto.belongsTo(observation: UUID): Boolean =
+    observationId == observation.toString() || observationKey == observation.toString()

@@ -1,5 +1,7 @@
 package dev.inspecto.android.core.error
 
+import java.net.HttpURLConnection
+
 /** Failure of a server call, already classified for the UI. */
 sealed class AppError(
     message: String,
@@ -28,3 +30,20 @@ sealed class AppError(
         val fieldErrors: Map<String, String> = emptyMap(),
     ) : AppError("API error $status ${code.orEmpty()}")
 }
+
+private const val TOO_MANY_REQUESTS = 429
+
+/**
+ * Whether repeating the same request later may succeed: no network, a timeout, rate limiting, a
+ * server failure, or an expired session that a new sign-in renews. Other errors need the user.
+ */
+fun AppError.isTemporary(): Boolean =
+    when (this) {
+        is AppError.Network -> true
+        is AppError.InvalidResponse -> false
+        is AppError.Api ->
+            status == HttpURLConnection.HTTP_UNAUTHORIZED ||
+                status == HttpURLConnection.HTTP_CLIENT_TIMEOUT ||
+                status == TOO_MANY_REQUESTS ||
+                status >= HttpURLConnection.HTTP_INTERNAL_ERROR
+    }

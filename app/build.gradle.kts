@@ -57,6 +57,9 @@ android {
     }
 
     sourceSets {
+        // Exported Room schemas for migration tests (Robolectric reads the assets of the debug build); they
+        // describe tables only, and release builds do not contain them.
+        getByName("debug").assets.directories.add(file("schemas").path)
         getByName("main").kotlin.directories.add(
             layout.buildDirectory
                 .dir("generated/openapi/src/main/kotlin")
