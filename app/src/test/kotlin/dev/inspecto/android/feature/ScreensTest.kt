@@ -15,6 +15,7 @@ import dev.inspecto.android.feature.auth.LoginScreen
 import dev.inspecto.android.feature.auth.LoginViewModel
 import dev.inspecto.android.feature.auth.RegisterScreen
 import dev.inspecto.android.feature.auth.RegisterViewModel
+import dev.inspecto.android.feature.inspections.InspectionRepository
 import dev.inspecto.android.feature.properties.CreatePropertyScreen
 import dev.inspecto.android.feature.properties.CreatePropertyViewModel
 import dev.inspecto.android.feature.properties.PropertyDetailsScreen
@@ -45,6 +46,7 @@ class ScreensTest {
 
     private val session = mockk<SessionRepository>(relaxed = true)
     private val repository = mockk<PropertyRepository>(relaxed = true)
+    private val inspections = mockk<InspectionRepository>(relaxed = true)
     private val now = OffsetDateTime.parse("2026-11-05T10:00:00Z")
     private val propertyId = UUID.randomUUID()
 
@@ -132,7 +134,7 @@ class ScreensTest {
         val viewModel = detailsViewModel()
         compose.setContent {
             InspectoTheme {
-                PropertyDetailsScreen(onBack = {}, viewModel = viewModel)
+                PropertyDetailsScreen(onBack = {}, onNewInspection = {}, onOpenInspection = {}, viewModel = viewModel)
             }
         }
 
@@ -151,7 +153,7 @@ class ScreensTest {
         val viewModel = detailsViewModel()
         compose.setContent {
             InspectoTheme {
-                PropertyDetailsScreen(onBack = {}, viewModel = viewModel)
+                PropertyDetailsScreen(onBack = {}, onNewInspection = {}, onOpenInspection = {}, viewModel = viewModel)
             }
         }
 
@@ -196,7 +198,11 @@ class ScreensTest {
     }
 
     private fun detailsViewModel() =
-        PropertyDetailsViewModel(SavedStateHandle(mapOf("propertyId" to propertyId.toString())), repository)
+        PropertyDetailsViewModel(
+            SavedStateHandle(mapOf("propertyId" to propertyId.toString())),
+            repository,
+            inspections,
+        )
 
     private fun property() =
         Property(

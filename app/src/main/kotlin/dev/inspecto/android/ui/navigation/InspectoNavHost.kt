@@ -12,9 +12,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import dev.inspecto.android.core.auth.SessionState
 import dev.inspecto.android.feature.auth.LoginScreen
 import dev.inspecto.android.feature.auth.RegisterScreen
+import dev.inspecto.android.feature.inspections.CreateInspectionScreen
+import dev.inspecto.android.feature.inspections.InspectionScreen
 import dev.inspecto.android.feature.properties.CreatePropertyScreen
 import dev.inspecto.android.feature.properties.PropertyDetailsScreen
 import dev.inspecto.android.feature.properties.PropertyListScreen
@@ -63,8 +66,26 @@ private fun MainNavHost() {
                 },
             )
         }
-        composable<PropertyDetailsRoute> {
-            PropertyDetailsScreen(onBack = { navController.popBackStack() })
+        composable<PropertyDetailsRoute> { entry ->
+            val propertyId = entry.toRoute<PropertyDetailsRoute>().propertyId
+            PropertyDetailsScreen(
+                onBack = { navController.popBackStack() },
+                onNewInspection = { navController.navigate(CreateInspectionRoute(propertyId)) },
+                onOpenInspection = { id -> navController.navigate(InspectionRoute(id.toString())) },
+            )
+        }
+        composable<CreateInspectionRoute> {
+            CreateInspectionScreen(
+                onBack = { navController.popBackStack() },
+                onCreated = { id ->
+                    navController.navigate(InspectionRoute(id.toString())) {
+                        popUpTo<CreateInspectionRoute> { inclusive = true }
+                    }
+                },
+            )
+        }
+        composable<InspectionRoute> {
+            InspectionScreen(onBack = { navController.popBackStack() })
         }
     }
 }

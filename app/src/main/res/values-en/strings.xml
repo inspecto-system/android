@@ -76,4 +76,57 @@
     <string name="room_type_hallway">Hallway</string>
     <string name="room_type_balcony">Balcony</string>
     <string name="room_type_other">Other</string>
+
+    <!-- Inspections -->
+    <string name="inspections_title">Inspections</string>
+    <string name="inspections_empty">No inspections yet</string>
+    <string name="inspection_new">New inspection</string>
+    <string name="inspection_new_title">New inspection</string>
+    <string name="inspection_title_field">Title (optional)</string>
+    <string name="inspection_templates">Checklists</string>
+    <string name="inspection_rooms">Rooms to inspect</string>
+    <string name="inspection_create">Create inspection</string>
+    <string name="inspection_rooms_required">Select at least one room</string>
+    <string name="inspection_templates_required">Select at least one checklist</string>
+    <string name="inspection_no_rooms">The property has no rooms. Add them on the property card first.</string>
+    <string name="inspection_default_title">Inspection %1$s</string>
+    <string name="inspection_defect_count">defects: %1$d</string>
+    <string name="inspection_status_draft">Draft</string>
+    <string name="inspection_status_in_progress">In progress</string>
+    <string name="inspection_status_completed">Completed</string>
+    <string name="inspection_draft_hint">Start the inspection to mark items and add defects.</string>
+    <string name="inspection_start">Start inspection</string>
+    <string name="inspection_complete">Complete inspection</string>
+    <string name="inspection_complete_title">Complete the inspection?</string>
+    <string name="inspection_complete_text">A completed inspection cannot be changed.</string>
+    <string name="inspection_unchecked">Items not marked: %1$d</string>
+    <string name="inspection_completed_at">Completed %1$s</string>
+    <string name="result_ok">OK</string>
+    <string name="result_defect">Defect</string>
+    <string name="result_not_applicable">N/A</string>
+
+    <!-- Defects -->
+    <string name="defects_in_room">Defects in the room</string>
+    <string name="defects_empty">No defects</string>
+    <string name="defect_add">Add defect</string>
+    <string name="defect_describe">Describe defect</string>
+    <string name="defect_new_title">New defect</string>
+    <string name="defect_title_field">What was found</string>
+    <string name="defect_category">Category</string>
+    <string name="defect_severity">Severity</string>
+    <string name="defect_element">Element</string>
+    <string name="defect_description">Description</string>
+    <string name="element_walls">Walls</string>
+    <string name="element_ceiling">Ceiling</string>
+    <string name="element_floor">Floor</string>
+    <string name="element_windows">Windows</string>
+    <string name="element_doors">Doors</string>
+    <string name="element_plumbing">Plumbing</string>
+    <string name="element_electrical">Electrical</string>
+    <string name="element_other">Other</string>
+    <string name="severity_cosmetic">Cosmetic</string>
+    <string name="severity_minor">Minor</string>
+    <string name="severity_major">Major</string>
+    <string name="severity_critical">Critical</string>
+    <string name="error_invalid_state">The inspection is already completed or its status changed. Refresh the screen.</string>
 </resources>

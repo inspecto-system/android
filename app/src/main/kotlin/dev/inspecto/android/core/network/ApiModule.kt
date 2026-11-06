@@ -5,6 +5,10 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dev.inspecto.android.api.apis.AuthApi
+import dev.inspecto.android.api.apis.ChecklistApi
+import dev.inspecto.android.api.apis.DefectsApi
+import dev.inspecto.android.api.apis.DictionariesApi
+import dev.inspecto.android.api.apis.InspectionsApi
 import dev.inspecto.android.api.apis.PropertiesApi
 import dev.inspecto.android.api.apis.RoomsApi
 import retrofit2.Retrofit
@@ -38,4 +42,28 @@ object ApiModule {
     fun provideRoomsApi(
         @AuthorizedApi retrofit: Retrofit,
     ): RoomsApi = retrofit.create(RoomsApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideInspectionsApi(
+        @AuthorizedApi retrofit: Retrofit,
+    ): InspectionsApi = retrofit.create(InspectionsApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideChecklistApi(
+        @AuthorizedApi retrofit: Retrofit,
+    ): ChecklistApi = retrofit.create(ChecklistApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideDefectsApi(
+        @AuthorizedApi retrofit: Retrofit,
+    ): DefectsApi = retrofit.create(DefectsApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideDictionariesApi(
+        @AuthorizedApi retrofit: Retrofit,
+    ): DictionariesApi = retrofit.create(DictionariesApi::class.java)
 }

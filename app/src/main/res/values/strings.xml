@@ -83,4 +83,57 @@
     <string name="room_type_hallway">Прихожая</string>
     <string name="room_type_balcony">Балкон</string>
     <string name="room_type_other">Другое</string>
+
+    <!-- Inspections -->
+    <string name="inspections_title">Осмотры</string>
+    <string name="inspections_empty">Осмотров пока нет</string>
+    <string name="inspection_new">Новый осмотр</string>
+    <string name="inspection_new_title">Новый осмотр</string>
+    <string name="inspection_title_field">Название (необязательно)</string>
+    <string name="inspection_templates">Чек-листы</string>
+    <string name="inspection_rooms">Помещения для осмотра</string>
+    <string name="inspection_create">Создать осмотр</string>
+    <string name="inspection_rooms_required">Выберите хотя бы одно помещение</string>
+    <string name="inspection_templates_required">Выберите хотя бы один чек-лист</string>
+    <string name="inspection_no_rooms">У объекта нет помещений. Сначала добавьте их в карточке объекта.</string>
+    <string name="inspection_default_title">Осмотр %1$s</string>
+    <string name="inspection_defect_count">дефектов: %1$d</string>
+    <string name="inspection_status_draft">Черновик</string>
+    <string name="inspection_status_in_progress">Идёт осмотр</string>
+    <string name="inspection_status_completed">Завершён</string>
+    <string name="inspection_draft_hint">Чтобы отмечать пункты и добавлять дефекты, начните осмотр.</string>
+    <string name="inspection_start">Начать осмотр</string>
+    <string name="inspection_complete">Завершить осмотр</string>
+    <string name="inspection_complete_title">Завершить осмотр?</string>
+    <string name="inspection_complete_text">После завершения осмотр нельзя изменить.</string>
+    <string name="inspection_unchecked">Не отмечено пунктов: %1$d</string>
+    <string name="inspection_completed_at">Завершён %1$s</string>
+    <string name="result_ok">OK</string>
+    <string name="result_defect">Дефект</string>
+    <string name="result_not_applicable">Неприменимо</string>
+
+    <!-- Defects -->
+    <string name="defects_in_room">Дефекты в помещении</string>
+    <string name="defects_empty">Дефектов нет</string>
+    <string name="defect_add">Добавить дефект</string>
+    <string name="defect_describe">Описать дефект</string>
+    <string name="defect_new_title">Новый дефект</string>
+    <string name="defect_title_field">Что обнаружено</string>
+    <string name="defect_category">Категория</string>
+    <string name="defect_severity">Серьёзность</string>
+    <string name="defect_element">Элемент</string>
+    <string name="defect_description">Описание</string>
+    <string name="element_walls">Стены</string>
+    <string name="element_ceiling">Потолок</string>
+    <string name="element_floor">Пол</string>
+    <string name="element_windows">Окна</string>
+    <string name="element_doors">Двери</string>
+    <string name="element_plumbing">Сантехника</string>
+    <string name="element_electrical">Электрика</string>
+    <string name="element_other">Другое</string>
+    <string name="severity_cosmetic">Косметический</string>
+    <string name="severity_minor">Незначительный</string>
+    <string name="severity_major">Значительный</string>
+    <string name="severity_critical">Критический</string>
+    <string name="error_invalid_state">Осмотр уже завершён или изменил статус. Обновите экран.</string>
 </resources>
