@@ -51,7 +51,6 @@ import dev.inspecto.android.ui.components.ErrorText
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.UUID
 
 /** Quick marks of a checklist item, in the order of the buttons. */
 private val quickMarks =
@@ -70,7 +69,7 @@ fun OffsetDateTime.localDate(): String = dateFormat.format(atZoneSameInstant(Zon
 @Composable
 fun InspectionScreen(
     onBack: () -> Unit,
-    onTakePhoto: (propertyId: UUID, observationId: UUID, attached: Int) -> Unit,
+    onTakePhoto: (PhotoRequest) -> Unit,
     viewModel: InspectionViewModel = hiltViewModel(),
     photos: PhotoQueueViewModel = hiltViewModel(),
 ) {
@@ -86,7 +85,16 @@ fun InspectionScreen(
             editable = state.editable,
             actions =
                 PhotoStripActions(
-                    onCamera = { onTakePhoto(observation.defect.propertyId, observation.id, observation.photos.size) },
+                    onCamera = {
+                        onTakePhoto(
+                            PhotoRequest(
+                                propertyId = observation.defect.propertyId,
+                                observationId = observation.id,
+                                attached = observation.photos.size,
+                                local = observation.id in state.localObservations,
+                            ),
+                        )
+                    },
                     thumbnail = photos::thumbnail,
                     preview = photos::preview,
                     onRetry = photos::retry,
@@ -94,6 +102,7 @@ fun InspectionScreen(
                 ),
         )
     }
+    val sync = SyncPanel(queue.pending.size, queue.droppedChanges, photos::discardFailedChanges, photos::dismissNotice)
     val inspection = state.inspection
     Scaffold(
         topBar = {
@@ -113,7 +122,7 @@ fun InspectionScreen(
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             when {
-                inspection != null -> InspectionContent(inspection, state, viewModel, queue.pending.size, photoSlot)
+                inspection != null -> InspectionContent(inspection, state, viewModel, sync, photoSlot)
                 state.loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 else ->
                     Column(Modifier.padding(16.dp)) {
@@ -139,11 +148,11 @@ private fun InspectionContent(
     inspection: InspectionDetails,
     state: InspectionState,
     viewModel: InspectionViewModel,
-    queuedPhotos: Int,
+    sync: SyncPanel,
     photoSlot: @Composable (ObservationWithDefect) -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
-        StatusBar(inspection, state, viewModel, queuedPhotos)
+        StatusBar(inspection, state, viewModel, sync)
         if (inspection.rooms.isEmpty()) return@Column
         val roomIndex = state.roomIndex.coerceIn(0, inspection.rooms.lastIndex)
         PrimaryScrollableTabRow(selectedTabIndex = roomIndex, edgePadding = 16.dp) {
@@ -164,7 +173,7 @@ private fun StatusBar(
     inspection: InspectionDetails,
     state: InspectionState,
     viewModel: InspectionViewModel,
-    queuedPhotos: Int,
+    sync: SyncPanel,
 ) {
     var confirmComplete by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -179,6 +188,7 @@ private fun StatusBar(
             style = MaterialTheme.typography.titleSmall,
         )
         ErrorText(state.errorRes)
+        SyncInfo(state, sync)
         when (inspection.status) {
             InspectionDetails.Status.DRAFT -> {
                 Text(stringResource(R.string.inspection_draft_hint), style = MaterialTheme.typography.bodySmall)
@@ -186,20 +196,12 @@ private fun StatusBar(
                     Text(stringResource(R.string.inspection_start))
                 }
             }
-            InspectionDetails.Status.IN_PROGRESS -> {
-                // Completion freezes the inspection: queued photos could no longer be attached.
-                if (queuedPhotos > 0) {
-                    Text(
-                        stringResource(R.string.photo_queue_blocks_completion, queuedPhotos),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
+            InspectionDetails.Status.IN_PROGRESS ->
                 OutlinedButton(
                     onClick = { confirmComplete = true },
-                    enabled = !state.busy && queuedPhotos == 0,
+                    enabled = !state.busy && !sync.blocksCompletion(state),
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(R.string.inspection_complete)) }
-            }
             InspectionDetails.Status.COMPLETED -> Unit
         }
     }

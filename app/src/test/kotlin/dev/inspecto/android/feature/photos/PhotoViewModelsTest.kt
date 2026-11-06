@@ -6,6 +6,7 @@ import dev.inspecto.android.core.db.PendingPhoto
 import dev.inspecto.android.core.error.AppError
 import dev.inspecto.android.media.api.models.PhotoLimits
 import dev.inspecto.android.testing.MainDispatcherExtension
+import dev.inspecto.android.testing.TestDrafts
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -31,6 +32,7 @@ class PhotoViewModelsTest {
     val main = MainDispatcherExtension()
 
     private val repository = mockk<PhotoRepository>(relaxed = true)
+    private val drafts = TestDrafts()
     private val propertyId = UUID.randomUUID()
     private val inspectionId = UUID.randomUUID()
     private val observationId = UUID.randomUUID()
@@ -43,7 +45,7 @@ class PhotoViewModelsTest {
         runTest(main.dispatcher) {
             every { repository.pending(inspectionId) } returns queue
             coEvery { repository.limits() } returns limits
-            val viewModel = PhotoQueueViewModel(handle(), repository)
+            val viewModel = PhotoQueueViewModel(handle(), repository, drafts.repository, drafts.notices)
             queue.value = listOf(pending("a", observationId), pending("b", UUID.randomUUID()))
             advanceUntilIdle()
 
@@ -66,7 +68,7 @@ class PhotoViewModelsTest {
     fun shouldCountAttachedButNotRemovedPhotos() =
         runTest(main.dispatcher) {
             every { repository.pending(inspectionId) } returns queue
-            val viewModel = PhotoQueueViewModel(handle(), repository)
+            val viewModel = PhotoQueueViewModel(handle(), repository, drafts.repository, drafts.notices)
             val first = pending("a", observationId)
             val second = pending("b", observationId)
             queue.value = listOf(first, second)

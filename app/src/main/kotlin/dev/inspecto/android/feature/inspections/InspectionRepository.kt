@@ -1,15 +1,12 @@
 package dev.inspecto.android.feature.inspections
 
-import dev.inspecto.android.api.apis.ChecklistApi
 import dev.inspecto.android.api.apis.DictionariesApi
 import dev.inspecto.android.api.apis.InspectionsApi
-import dev.inspecto.android.api.models.ChecklistItem
 import dev.inspecto.android.api.models.ChecklistTemplate
 import dev.inspecto.android.api.models.CreateInspectionRequest
 import dev.inspecto.android.api.models.Inspection
 import dev.inspecto.android.api.models.InspectionDetails
 import dev.inspecto.android.api.models.InspectionSummary
-import dev.inspecto.android.api.models.UpdateChecklistItemRequest
 import dev.inspecto.android.api.models.UpdateInspectionRequest
 import dev.inspecto.android.api.models.VersionOnly
 import dev.inspecto.android.core.error.apiCall
@@ -29,12 +26,11 @@ data class NewInspection(
     val inspectedAt: OffsetDateTime,
 )
 
-/** Inspections, checklists and checklist templates (platform/api/core.yaml). */
+/** Inspections and checklist templates (platform/api/core.yaml). */
 class InspectionRepository
     @Inject
     constructor(
         private val inspections: InspectionsApi,
-        private val checklist: ChecklistApi,
         private val dictionaries: DictionariesApi,
     ) {
         /** Inspection history of a property, newest first. */
@@ -83,20 +79,6 @@ class InspectionRepository
         /** IN_PROGRESS → COMPLETED; the inspection cannot be changed afterwards. */
         suspend fun complete(inspection: InspectionDetails): Inspection =
             apiCall { inspections.completeInspection(inspection.id, VersionOnly(inspection.version)) }
-
-        suspend fun setResult(
-            item: ChecklistItem,
-            result: ChecklistItem.Result,
-        ): ChecklistItem =
-            apiCall {
-                checklist.updateChecklistItem(
-                    item.id,
-                    UpdateChecklistItemRequest(
-                        version = item.version,
-                        result = UpdateChecklistItemRequest.Result.valueOf(result.name),
-                    ),
-                )
-            }
 
         private companion object {
             /** The API allows up to 100 items per page; a property has far fewer inspections. */

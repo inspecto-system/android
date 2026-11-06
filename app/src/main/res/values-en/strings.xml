@@ -156,4 +156,12 @@
     <string name="photo_error_too_large">Photo rejected by the server: too large.</string>
     <string name="photo_error_missing">The photo file is missing on the device.</string>
     <string name="photo_error_other">Photo not sent: server error.</string>
+
+    <!-- Offline drafts -->
+    <string name="sync_offline">No connection to the server. Changes are saved on the phone and will be sent automatically.</string>
+    <string name="sync_waiting">Changes waiting to be sent: %1$d. The inspection can be completed once they are sent.</string>
+    <string name="sync_failed">Changes rejected by the server: %1$d</string>
+    <string name="sync_discard">Discard them</string>
+    <string name="sync_completed_elsewhere">The inspection is already completed on the server. Unsent changes discarded: %1$d.</string>
+    <string name="sync_understood">OK</string>
 </resources>

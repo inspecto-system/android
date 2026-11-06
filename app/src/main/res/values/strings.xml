@@ -163,4 +163,12 @@
     <string name="photo_error_too_large">Фото не принято сервером: слишком большое.</string>
     <string name="photo_error_missing">Файл фото пропал с устройства.</string>
     <string name="photo_error_other">Фото не отправлено: ошибка сервера.</string>
+
+    <!-- Offline drafts -->
+    <string name="sync_offline">Нет связи с сервером. Изменения сохраняются на телефоне и отправятся автоматически.</string>
+    <string name="sync_waiting">Изменений ждут отправки: %1$d. Завершить осмотр можно после отправки.</string>
+    <string name="sync_failed">Сервер не принял изменений: %1$d</string>
+    <string name="sync_discard">Отменить их</string>
+    <string name="sync_completed_elsewhere">Осмотр уже завершён на сервере. Неотправленные изменения отменены: %1$d.</string>
+    <string name="sync_understood">Понятно</string>
 </resources>

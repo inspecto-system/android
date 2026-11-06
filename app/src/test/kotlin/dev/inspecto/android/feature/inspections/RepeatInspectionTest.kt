@@ -1,24 +1,25 @@
 package dev.inspecto.android.feature.inspections
 
 import androidx.lifecycle.SavedStateHandle
-import dev.inspecto.android.api.apis.DefectsApi
-import dev.inspecto.android.api.apis.DictionariesApi
 import dev.inspecto.android.api.models.Observation
 import dev.inspecto.android.api.models.Room
+import dev.inspecto.android.core.network.NetworkModule
+import dev.inspecto.android.feature.drafts.ActionType
+import dev.inspecto.android.feature.drafts.RecordObservation
 import dev.inspecto.android.feature.inspections.InspectionFixtures.bedroom
 import dev.inspecto.android.feature.inspections.InspectionFixtures.details
 import dev.inspecto.android.feature.inspections.InspectionFixtures.inspectionId
 import dev.inspecto.android.feature.inspections.InspectionFixtures.kitchen
 import dev.inspecto.android.feature.inspections.InspectionFixtures.propertyId
 import dev.inspecto.android.testing.MainDispatcherExtension
-import dev.inspecto.android.testing.TestServer
+import dev.inspecto.android.testing.TestDrafts
 import io.mockk.coEvery
-import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 import java.util.UUID
@@ -32,6 +33,7 @@ class RepeatInspectionTest {
 
     private val repository = mockk<InspectionRepository>(relaxed = true)
     private val defects = mockk<DefectRepository>(relaxed = true)
+    private val drafts = TestDrafts()
 
     @Test
     fun shouldGroupOpenDefectsByRoomAndCountUnmarked() =
@@ -54,59 +56,64 @@ class RepeatInspectionTest {
         }
 
     @Test
-    fun shouldRecordDecisionAndReloadInspection() =
+    fun shouldQueueDecisionAndShowItAtOnce() =
         runTest(main.dispatcher) {
             val crack = openDefect("Трещина")
-            val marked = openDefect("Трещина", current = Observation.Status.RESOLVED)
             coEvery { repository.details(inspectionId) } returns details()
-            coEvery { defects.openDefects(inspectionId) } returnsMany listOf(listOf(crack), listOf(marked))
+            coEvery { defects.openDefects(inspectionId) } returns listOf(crack)
             val viewModel = viewModel()
             advanceUntilIdle()
+            assertEquals(1, viewModel.state.value.unmarkedOpenDefects)
 
             viewModel.markOpenDefect(crack, Observation.Status.RESOLVED)
             advanceUntilIdle()
 
-            coVerify { defects.recordObservation(inspectionId, crack, Observation.Status.RESOLVED) }
-            coVerify(exactly = 2) { repository.details(inspectionId) }
             assertEquals(0, viewModel.state.value.unmarkedOpenDefects)
+            val shown =
+                viewModel.state.value.openDefects
+                    .single()
+                    .currentObservation
+            assertEquals(Observation.Status.RESOLVED, shown?.status)
+            assertTrue(checkNotNull(shown).id in viewModel.state.value.localObservations)
+            val kitchenDefects = checkNotNull(viewModel.state.value.inspection).rooms.first().observations
+            assertEquals(listOf(crack.defect.id), kitchenDefects.map { it.defectId })
+            val queued =
+                drafts.actions.rows.value
+                    .single()
+            assertEquals(ActionType.RECORD_OBSERVATION.name, queued.type)
+            assertTrue(queued.payload.contains("\"status\":\"RESOLVED\""))
         }
 
     @Test
-    fun shouldCreateObservationForFirstDecisionAndUpdateItAfterwards() =
-        runTest {
-            val server = TestServer()
-            try {
-                val retrofit = server.authorizedRetrofit
-                val wire =
-                    DefectRepository(
-                        retrofit.create(DefectsApi::class.java),
-                        retrofit.create(DictionariesApi::class.java),
-                    )
-                val first = openDefect("Трещина")
-                val again = openDefect("Трещина", current = Observation.Status.OPEN)
-                val answer = observationJson(first.defect.id)
-                server.enqueue(201, answer)
-                server.enqueue(200, answer)
+    fun shouldChangeDecisionOfObservationAlreadyOnServer() =
+        runTest(main.dispatcher) {
+            val marked = openDefect("Трещина", current = Observation.Status.OPEN)
+            coEvery { repository.details(inspectionId) } returns details()
+            coEvery { defects.openDefects(inspectionId) } returns listOf(marked)
+            val viewModel = viewModel()
+            advanceUntilIdle()
 
-                wire.recordObservation(inspectionId, first, Observation.Status.OPEN)
-                wire.recordObservation(inspectionId, again, Observation.Status.RESOLVED)
+            viewModel.markOpenDefect(marked, Observation.Status.RESOLVED)
+            advanceUntilIdle()
 
-                val create = server.server.takeRequest()
-                assertEquals("/api/v1/inspections/$inspectionId/observations", create.url.encodedPath)
-                assertEquals("""{"defectId":"${first.defect.id}","status":"OPEN"}""", create.body?.utf8())
-                val update = server.server.takeRequest()
-                assertEquals("PATCH", update.method)
-                assertEquals("/api/v1/observations/${again.currentObservation?.id}", update.url.encodedPath)
-                assertEquals("""{"version":2,"status":"RESOLVED"}""", update.body?.utf8())
-            } finally {
-                server.close()
-            }
+            val decision =
+                NetworkModule.provideJson().decodeFromString<RecordObservation>(
+                    drafts.actions.rows.value
+                        .single()
+                        .payload,
+                )
+            assertEquals(RecordObservation(marked.defect.id, "RESOLVED", marked.currentObservation?.id, 2), decision)
+            assertTrue(
+                viewModel.state.value.localObservations
+                    .isEmpty(),
+            )
         }
 
     private fun viewModel() =
-        InspectionViewModel(SavedStateHandle(mapOf("inspectionId" to inspectionId.toString())), repository, defects)
-
-    private fun observationJson(defectId: UUID) =
-        """{"id":"${UUID.randomUUID()}","defectId":"$defectId","inspectionId":"$inspectionId","status":"OPEN",
-            "severity":"MAJOR","observedBy":"$propertyId","photos":[],"createdAt":"2026-11-06T10:00:00Z","version":0}"""
+        InspectionViewModel(
+            SavedStateHandle(mapOf("inspectionId" to inspectionId.toString())),
+            repository,
+            defects,
+            drafts.repository,
+        )
 }

@@ -47,6 +47,16 @@ class FakePendingPhotoDao : PendingPhotoDao {
         errorCode: String?,
     ) = update(id) { it.copy(errorCode = errorCode) }
 
+    override suspend fun resolveObservation(
+        observationKey: String,
+        observationId: String,
+    ) {
+        rows.value =
+            rows.value.mapValues { (_, photo) ->
+                if (photo.observationKey == observationKey) photo.copy(observationId = observationId) else photo
+            }
+    }
+
     override suspend fun delete(id: String) {
         rows.value -= id
     }

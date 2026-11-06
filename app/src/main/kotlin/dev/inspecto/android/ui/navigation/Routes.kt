@@ -42,4 +42,6 @@ data class CameraRoute(
     val inspectionId: String,
     val observationId: String,
     val attached: Int,
+    /** The observation exists only on the device (T-308). */
+    val local: Boolean = false,
 ) : Route

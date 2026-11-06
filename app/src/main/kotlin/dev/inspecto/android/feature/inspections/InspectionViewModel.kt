@@ -12,9 +12,15 @@ import dev.inspecto.android.api.models.Inspection
 import dev.inspecto.android.api.models.InspectionDetails
 import dev.inspecto.android.api.models.Observation
 import dev.inspecto.android.api.models.OpenDefect
+import dev.inspecto.android.core.db.PendingAction
 import dev.inspecto.android.core.error.AppError
 import dev.inspecto.android.core.error.messageRes
+import dev.inspecto.android.feature.drafts.DraftApplier
+import dev.inspecto.android.feature.drafts.DraftRepository
+import dev.inspecto.android.feature.drafts.InspectionSnapshot
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -63,8 +69,15 @@ data class InspectionState(
     @StringRes val errorRes: Int? = null,
     val defectDraft: DefectDraft? = null,
     val openDefects: List<OpenDefect> = emptyList(),
+    /** Shown from the snapshot on the device: the server could not be reached. */
+    val offline: Boolean = false,
+    /** Changes not sent yet (T-308); completion waits until the server has them. */
+    val pending: List<PendingAction> = emptyList(),
+    val localObservations: Set<UUID> = emptySet(),
 ) {
     val editable: Boolean get() = inspection?.status == InspectionDetails.Status.IN_PROGRESS
+
+    val failedChanges: Int get() = pending.count { it.errorCode != null }
 
     /** Defects open since earlier inspections not yet marked as remaining or resolved. */
     val unmarkedOpenDefects: Int get() = openDefects.count { it.currentObservation == null }
@@ -91,6 +104,10 @@ data class InspectionState(
         inspection?.rooms.orEmpty().any { room -> room.observations.any { it.checklistItemId == itemId } }
 }
 
+/**
+ * Inspection screen, local-first (T-308): every change is saved on the device and shown at once; the
+ * offline queue sends it. Without a network the inspection opens from the last snapshot.
+ */
 @HiltViewModel
 class InspectionViewModel
     @Inject
@@ -98,43 +115,53 @@ class InspectionViewModel
         savedStateHandle: SavedStateHandle,
         private val repository: InspectionRepository,
         private val defects: DefectRepository,
+        private val drafts: DraftRepository,
     ) : ViewModel() {
         private val inspectionId: UUID = UUID.fromString(checkNotNull(savedStateHandle.get<String>("inspectionId")))
         private val mutableState = MutableStateFlow(InspectionState())
+        private var snapshot: InspectionSnapshot? = null
 
         val state: StateFlow<InspectionState> = mutableState.asStateFlow()
 
         init {
+            viewModelScope.launch {
+                drafts.actions(inspectionId).collect { actions ->
+                    val sent = actions.size < state.value.pending.size
+                    mutableState.update { it.shown(snapshot, actions, drafts.applier) }
+                    // The server now has a change: its answer (ids, versions) replaces the local copy.
+                    if (sent) reload()
+                }
+            }
             reload()
         }
 
         fun reload() =
             run(showLoading = true) {
-                val details = async { repository.details(inspectionId) }
-                val categories = async { defects.categories() }
-                val openDefects = async { defects.openDefects(inspectionId) }
-                mutableState.update {
-                    it.copy(
-                        inspection = details.await(),
-                        categories = categories.await(),
-                        openDefects = openDefects.await(),
-                    )
-                }
+                var offline = false
+                val fresh =
+                    try {
+                        coroutineScope {
+                            val details = async { repository.details(inspectionId) }
+                            val categories = async { defects.categories() }
+                            val openDefects = async { defects.openDefects(inspectionId) }
+                            InspectionSnapshot(details.await(), openDefects.await(), categories.await())
+                        }.also { drafts.saveSnapshot(it) }
+                    } catch (e: AppError.Network) {
+                        offline = true
+                        drafts.snapshot(inspectionId) ?: throw e
+                    }
+                snapshot = fresh
+                mutableState.update { it.shown(fresh, it.pending, drafts.applier).copy(offline = offline) }
             }
 
         /**
          * Explicit decision of a repeat inspection about a defect found earlier: it remains (OPEN) or
-         * is resolved (RESOLVED, ADR-004). A second decision changes the observation of this inspection.
+         * is resolved (RESOLVED, ADR-004). A second decision replaces the first one.
          */
         fun markOpenDefect(
             openDefect: OpenDefect,
             status: Observation.Status,
-        ) = run {
-            defects.recordObservation(inspectionId, openDefect, status)
-            val details = async { repository.details(inspectionId) }
-            val openDefects = async { defects.openDefects(inspectionId) }
-            mutableState.update { it.copy(inspection = details.await(), openDefects = openDefects.await()) }
-        }
+        ) = run { drafts.recordObservation(inspectionId, openDefect.defect.id, status) }
 
         fun selectRoom(index: Int) = mutableState.update { it.copy(roomIndex = index) }
 
@@ -147,8 +174,7 @@ class InspectionViewModel
             item: ChecklistItem,
             result: ChecklistItem.Result,
         ) = run {
-            val updated = repository.setResult(item, result)
-            mutableState.update { it.copy(inspection = it.inspection?.withItem(updated)) }
+            drafts.setResult(item, result)
             if (result == ChecklistItem.Result.DEFECT && !state.value.hasDefect(item.id)) {
                 showDefectDialog(DefectDraft.forItem(item))
             }
@@ -160,7 +186,7 @@ class InspectionViewModel
         fun saveDefect(form: DefectForm) {
             val draft = state.value.defectDraft ?: return
             run {
-                defects.createDefect(
+                drafts.createDefect(
                     inspectionId,
                     CreateDefectRequest(
                         roomId = draft.roomId,
@@ -172,30 +198,22 @@ class InspectionViewModel
                         description = form.description.trim().ifEmpty { null },
                     ),
                 )
-                mutableState.update { it.copy(defectDraft = null, inspection = repository.details(inspectionId)) }
+                mutableState.update { it.copy(defectDraft = null) }
             }
         }
 
+        /** Start and completion need the server: they change what may be edited. */
         private fun changeStatus(action: suspend (InspectionDetails) -> Inspection) {
             val inspection = state.value.inspection ?: return
             run {
-                val changed = action(inspection)
-                mutableState.update {
-                    it.copy(
-                        inspection =
-                            it.inspection?.copy(
-                                status = InspectionDetails.Status.valueOf(changed.status.name),
-                                version = changed.version,
-                                completedAt = changed.completedAt,
-                            ),
-                    )
-                }
+                action(inspection)
+                reload()
             }
         }
 
         private fun run(
             showLoading: Boolean = false,
-            action: suspend kotlinx.coroutines.CoroutineScope.() -> Unit,
+            action: suspend CoroutineScope.() -> Unit,
         ) {
             viewModelScope.launch {
                 mutableState.update { it.copy(loading = showLoading || it.loading, busy = true, errorRes = null) }
@@ -210,16 +228,21 @@ class InspectionViewModel
         }
 
         private companion object {
-            fun InspectionDetails.withItem(item: ChecklistItem): InspectionDetails =
-                copy(
-                    rooms =
-                        rooms.map { room ->
-                            if (room.room.id == item.roomId) {
-                                room.copy(checklist = room.checklist.map { if (it.id == item.id) item else it })
-                            } else {
-                                room
-                            }
-                        },
+            /** The snapshot with the unsent changes applied, as the screen shows it. */
+            fun InspectionState.shown(
+                snapshot: InspectionSnapshot?,
+                actions: List<PendingAction>,
+                applier: DraftApplier,
+            ): InspectionState {
+                if (snapshot == null) return copy(pending = actions)
+                val view = applier.apply(snapshot, actions)
+                return copy(
+                    inspection = view.details,
+                    openDefects = view.openDefects,
+                    categories = snapshot.categories,
+                    localObservations = view.localObservations,
+                    pending = actions,
                 )
+            }
         }
     }

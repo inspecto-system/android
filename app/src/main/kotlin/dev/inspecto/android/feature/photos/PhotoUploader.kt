@@ -6,12 +6,12 @@ import dev.inspecto.android.core.db.PendingPhoto
 import dev.inspecto.android.core.db.PendingPhotoDao
 import dev.inspecto.android.core.error.AppError
 import dev.inspecto.android.core.error.apiCall
+import dev.inspecto.android.core.error.isTemporary
 import dev.inspecto.android.media.api.apis.PhotosApi
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
-import java.net.HttpURLConnection
 import java.util.UUID
 import javax.inject.Inject
 
@@ -41,7 +41,7 @@ class PhotoUploader
                 try {
                     send(photo)
                 } catch (e: AppError) {
-                    if (isTemporary(e)) return QueueResult.RETRY
+                    if (e.isTemporary()) return QueueResult.RETRY
                     dao.setError(photo.id, (e as? AppError.Api)?.let { it.code ?: "HTTP_${it.status}" } ?: UNREADABLE)
                 }
             }
@@ -72,24 +72,12 @@ class PhotoUploader
             file.delete()
         }
 
-        private fun isTemporary(error: AppError): Boolean =
-            when (error) {
-                is AppError.Network -> true
-                is AppError.InvalidResponse -> false
-                is AppError.Api ->
-                    error.status == HttpURLConnection.HTTP_UNAUTHORIZED ||
-                        error.status == HttpURLConnection.HTTP_CLIENT_TIMEOUT ||
-                        error.status == TOO_MANY_REQUESTS ||
-                        error.status >= HttpURLConnection.HTTP_INTERNAL_ERROR
-            }
-
         companion object {
             /** The compressed file disappeared (for example, app data was cleared). */
             const val FILE_MISSING = "FILE_MISSING"
 
             /** The server answered with a body the app cannot read. */
             const val UNREADABLE = "UNREADABLE_RESPONSE"
-            private const val TOO_MANY_REQUESTS = 429
             private val JPEG = "image/jpeg".toMediaType()
         }
     }

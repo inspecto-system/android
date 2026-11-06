@@ -89,9 +89,15 @@ private fun MainNavHost() {
             val inspectionId = entry.toRoute<InspectionRoute>().inspectionId
             InspectionScreen(
                 onBack = { navController.popBackStack() },
-                onTakePhoto = { propertyId, observationId, attached ->
+                onTakePhoto = { photo ->
                     navController.navigate(
-                        CameraRoute(propertyId.toString(), inspectionId, observationId.toString(), attached),
+                        CameraRoute(
+                            photo.propertyId.toString(),
+                            inspectionId,
+                            photo.observationId.toString(),
+                            photo.attached,
+                            photo.local,
+                        ),
                     )
                 },
             )

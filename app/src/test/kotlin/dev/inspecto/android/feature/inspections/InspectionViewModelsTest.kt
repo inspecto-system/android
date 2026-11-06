@@ -8,6 +8,9 @@ import dev.inspecto.android.api.models.Inspection
 import dev.inspecto.android.api.models.InspectionDetails
 import dev.inspecto.android.api.models.PropertyDetails
 import dev.inspecto.android.core.error.AppError
+import dev.inspecto.android.core.network.NetworkModule
+import dev.inspecto.android.feature.drafts.ActionType
+import dev.inspecto.android.feature.drafts.CreateDefect
 import dev.inspecto.android.feature.inspections.InspectionFixtures.bedroom
 import dev.inspecto.android.feature.inspections.InspectionFixtures.cracks
 import dev.inspecto.android.feature.inspections.InspectionFixtures.details
@@ -23,6 +26,7 @@ import dev.inspecto.android.feature.inspections.InspectionFixtures.standard
 import dev.inspecto.android.feature.inspections.InspectionFixtures.wet
 import dev.inspecto.android.feature.properties.PropertyRepository
 import dev.inspecto.android.testing.MainDispatcherExtension
+import dev.inspecto.android.testing.TestDrafts
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -36,6 +40,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
+import java.io.IOException
 import java.util.UUID
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -47,6 +52,7 @@ class InspectionViewModelsTest {
     private val properties = mockk<PropertyRepository>(relaxed = true)
     private val repository = mockk<InspectionRepository>(relaxed = true)
     private val defects = mockk<DefectRepository>(relaxed = true)
+    private val drafts = TestDrafts()
 
     @Test
     fun shouldPreselectAllRoomsAndStandardTemplate() =
@@ -119,7 +125,12 @@ class InspectionViewModelsTest {
     @Test
     fun shouldStartAndCompleteInspection() =
         runTest(main.dispatcher) {
-            coEvery { repository.details(inspectionId) } returns details(InspectionDetails.Status.DRAFT)
+            coEvery { repository.details(inspectionId) } returnsMany
+                listOf(
+                    details(InspectionDetails.Status.DRAFT),
+                    details(InspectionDetails.Status.IN_PROGRESS),
+                    details(InspectionDetails.Status.COMPLETED).copy(completedAt = now),
+                )
             coEvery { repository.start(any()) } returns inspection(Inspection.Status.IN_PROGRESS)
             coEvery { repository.complete(any()) } returns inspection(Inspection.Status.COMPLETED)
             val viewModel = inspectionViewModel()
@@ -155,13 +166,10 @@ class InspectionViewModelsTest {
         }
 
     @Test
-    fun shouldMarkItemAndOpenDefectDialogForDefectMark() =
+    fun shouldSaveMarkOnDeviceAndOpenDefectDialogForDefectMark() =
         runTest(main.dispatcher) {
             val walls = item("Стены без трещин")
             coEvery { repository.details(inspectionId) } returns details(kitchenItems = listOf(walls))
-            coEvery { repository.setResult(walls, any()) } answers {
-                walls.copy(result = secondArg(), version = 1)
-            }
             val viewModel = inspectionViewModel()
             advanceUntilIdle()
 
@@ -174,7 +182,14 @@ class InspectionViewModelsTest {
             advanceUntilIdle()
             val draft = checkNotNull(viewModel.state.value.defectDraft)
             assertEquals(DefectDraft(kitchen.id, walls.id, CreateDefectRequest.ElementGroup.WALLS, walls.title), draft)
-            assertEquals(1L, firstKitchenItem(viewModel).version)
+            // Only the latest mark of an item is sent.
+            val queued =
+                drafts.actions.rows.value
+                    .single()
+            assertEquals(ActionType.SET_RESULT.name, queued.type)
+            assertTrue(queued.payload.contains("\"result\":\"DEFECT\""))
+            assertEquals(ChecklistItem.Result.DEFECT, firstKitchenItem(viewModel).result)
+            coVerify(atLeast = 2) { drafts.scheduler.schedule() }
         }
 
     @Test
@@ -183,7 +198,6 @@ class InspectionViewModelsTest {
             val walls = item("Стены без трещин")
             coEvery { repository.details(inspectionId) } returns
                 details(kitchenItems = listOf(walls), observations = listOf(observation(walls, "Трещина")))
-            coEvery { repository.setResult(walls, any()) } returns walls.copy(result = ChecklistItem.Result.DEFECT)
             val viewModel = inspectionViewModel()
             advanceUntilIdle()
 
@@ -195,16 +209,10 @@ class InspectionViewModelsTest {
         }
 
     @Test
-    fun shouldCreateDefectAndReloadInspection() =
+    fun shouldQueueNewDefectAndShowItAtOnce() =
         runTest(main.dispatcher) {
             val walls = item("Стены без трещин", result = ChecklistItem.Result.DEFECT)
-            coEvery { repository.details(inspectionId) } returnsMany
-                listOf(
-                    details(kitchenItems = listOf(walls)),
-                    details(kitchenItems = listOf(walls), observations = listOf(observation(walls, "Трещина"))),
-                )
-            val request = slot<CreateDefectRequest>()
-            coEvery { defects.createDefect(inspectionId, capture(request)) } returns mockk()
+            coEvery { repository.details(inspectionId) } returns details(kitchenItems = listOf(walls))
             val viewModel = inspectionViewModel()
             advanceUntilIdle()
 
@@ -220,6 +228,11 @@ class InspectionViewModelsTest {
             )
             advanceUntilIdle()
 
+            val queued =
+                drafts.actions.rows.value
+                    .single()
+            assertEquals(ActionType.CREATE_DEFECT.name, queued.type)
+            val created = NetworkModule.provideJson().decodeFromString<CreateDefect>(queued.payload)
             assertEquals(
                 CreateDefectRequest(
                     roomId = kitchen.id,
@@ -229,17 +242,18 @@ class InspectionViewModelsTest {
                     title = "Трещина",
                     severity = CreateDefectRequest.Severity.MAJOR,
                 ),
-                request.captured,
+                created.request,
             )
             assertNull(viewModel.state.value.defectDraft)
-            assertEquals(
-                1,
-                viewModel.state.value.inspection
-                    ?.rooms
-                    ?.first()
-                    ?.observations
-                    ?.size,
-            )
+            val shown =
+                checkNotNull(viewModel.state.value.inspection)
+                    .rooms
+                    .first()
+                    .observations
+                    .single()
+            assertEquals("Трещина", shown.defect.title)
+            assertTrue(shown.id in viewModel.state.value.localObservations)
+            assertTrue(viewModel.state.value.hasDefect(walls.id))
         }
 
     @Test
@@ -269,7 +283,66 @@ class InspectionViewModelsTest {
 
             assertNull(viewModel.state.value.defectDraft)
             assertEquals(1, viewModel.state.value.roomIndex)
-            coVerify(exactly = 0) { defects.createDefect(any(), any()) }
+            assertTrue(
+                drafts.actions.rows.value
+                    .isEmpty(),
+            )
+        }
+
+    @Test
+    fun shouldOpenFromSnapshotWithoutNetworkAndKeepLocalChanges() =
+        runTest(main.dispatcher) {
+            val walls = item("Стены без трещин")
+            coEvery { repository.details(inspectionId) } returns details(kitchenItems = listOf(walls))
+            inspectionViewModel().apply {
+                advanceUntilIdle()
+                mark(walls, ChecklistItem.Result.OK)
+                advanceUntilIdle()
+            }
+            coEvery { repository.details(inspectionId) } throws AppError.Network(IOException())
+
+            // The app was restarted without a network.
+            val viewModel = inspectionViewModel()
+            advanceUntilIdle()
+
+            assertTrue(viewModel.state.value.offline)
+            assertNull(viewModel.state.value.errorRes)
+            assertEquals(ChecklistItem.Result.OK, firstKitchenItem(viewModel).result)
+            assertEquals(1, viewModel.state.value.pending.size)
+        }
+
+    @Test
+    fun shouldShowNetworkErrorWithoutSnapshot() =
+        runTest(main.dispatcher) {
+            coEvery { repository.details(inspectionId) } throws AppError.Network(IOException())
+            val viewModel = inspectionViewModel()
+            advanceUntilIdle()
+
+            assertNull(viewModel.state.value.inspection)
+            assertEquals(R.string.error_network, viewModel.state.value.errorRes)
+        }
+
+    @Test
+    fun shouldReloadWhenServerReceivedAChange() =
+        runTest(main.dispatcher) {
+            val walls = item("Стены без трещин")
+            coEvery { repository.details(inspectionId) } returns details(kitchenItems = listOf(walls))
+            val viewModel = inspectionViewModel()
+            advanceUntilIdle()
+            viewModel.mark(walls, ChecklistItem.Result.OK)
+            advanceUntilIdle()
+
+            coEvery { repository.details(inspectionId) } returns
+                details(kitchenItems = listOf(walls.copy(result = ChecklistItem.Result.OK, version = 1)))
+            drafts.actions.rows.value = emptyList()
+            advanceUntilIdle()
+
+            assertEquals(1L, firstKitchenItem(viewModel).version)
+            assertTrue(
+                viewModel.state.value.pending
+                    .isEmpty(),
+            )
+            coVerify(exactly = 2) { repository.details(inspectionId) }
         }
 
     @Test
@@ -308,7 +381,12 @@ class InspectionViewModelsTest {
         )
 
     private fun inspectionViewModel() =
-        InspectionViewModel(SavedStateHandle(mapOf("inspectionId" to inspectionId.toString())), repository, defects)
+        InspectionViewModel(
+            SavedStateHandle(mapOf("inspectionId" to inspectionId.toString())),
+            repository,
+            defects,
+            drafts.repository,
+        )
 
     private fun firstKitchenItem(viewModel: InspectionViewModel) =
         checkNotNull(viewModel.state.value.inspection)
