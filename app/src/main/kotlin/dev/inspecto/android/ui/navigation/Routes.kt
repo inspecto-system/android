@@ -35,6 +35,12 @@ data class InspectionRoute(
     val inspectionId: String,
 ) : Route
 
+/** Comparison of two inspections of a property (T-405). */
+@Serializable
+data class CompareRoute(
+    val propertyId: String,
+) : Route
+
 /** PDF reports of a completed inspection (T-404). */
 @Serializable
 data class ReportsRoute(
