@@ -35,6 +35,12 @@ data class InspectionRoute(
     val inspectionId: String,
 ) : Route
 
+/** PDF reports of a completed inspection (T-404). */
+@Serializable
+data class ReportsRoute(
+    val inspectionId: String,
+) : Route
+
 /** Camera of an observation; [attached] photos already on the server count against the limit. */
 @Serializable
 data class CameraRoute(

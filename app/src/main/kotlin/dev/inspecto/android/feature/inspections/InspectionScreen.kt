@@ -69,6 +69,7 @@ fun OffsetDateTime.localDate(): String = dateFormat.format(atZoneSameInstant(Zon
 @Composable
 fun InspectionScreen(
     onBack: () -> Unit,
+    onReports: () -> Unit,
     onTakePhoto: (PhotoRequest) -> Unit,
     viewModel: InspectionViewModel = hiltViewModel(),
     photos: PhotoQueueViewModel = hiltViewModel(),
@@ -117,6 +118,12 @@ fun InspectionScreen(
                     )
                 },
                 navigationIcon = { TextButton(onClick = onBack) { Text(stringResource(R.string.back)) } },
+                actions = {
+                    // Only a completed inspection can be reported (platform/api/report.yaml).
+                    if (inspection?.status == InspectionDetails.Status.COMPLETED) {
+                        TextButton(onClick = onReports) { Text(stringResource(R.string.reports_title)) }
+                    }
+                },
             )
         },
     ) { padding ->

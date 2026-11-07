@@ -171,4 +171,25 @@
     <string name="sync_discard">Отменить их</string>
     <string name="sync_completed_elsewhere">Осмотр уже завершён на сервере. Неотправленные изменения отменены: %1$d.</string>
     <string name="sync_understood">Понятно</string>
+
+    <!-- Reports (T-404) -->
+    <string name="reports_title">Отчёты</string>
+    <string name="reports_refresh">Обновить</string>
+    <string name="reports_empty">Отчётов пока нет.</string>
+    <string name="report_order">Сформировать отчёт PDF</string>
+    <string name="report_generating">Отчёт формируется, обычно это занимает несколько секунд…</string>
+    <string name="report_created">Отчёт от %1$s %2$s</string>
+    <string name="report_details">Страниц: %1$d, размер %2$s</string>
+    <string name="report_open">Открыть</string>
+    <string name="report_downloading">Загрузка…</string>
+    <string name="report_status_queued">В очереди</string>
+    <string name="report_status_running">Формируется</string>
+    <string name="report_status_done">Готов</string>
+    <string name="report_status_failed">Не удалось сформировать</string>
+    <string name="report_still_generating">Отчёт ещё формируется. Обновите список чуть позже.</string>
+    <string name="report_failed">Не удалось сформировать отчёт. Попробуйте ещё раз.</string>
+    <string name="report_failed_too_large">Отчёт получился слишком большим: в осмотре слишком много фото.</string>
+    <string name="report_failed_unavailable">Сервер был временно недоступен. Попробуйте ещё раз.</string>
+    <string name="report_not_ready">Отчёт ещё не готов.</string>
+    <string name="report_no_viewer">Нет приложения для просмотра PDF. Установите его и повторите.</string>
 </resources>

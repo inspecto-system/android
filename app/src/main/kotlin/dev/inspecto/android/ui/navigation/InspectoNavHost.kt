@@ -22,6 +22,7 @@ import dev.inspecto.android.feature.photos.CameraScreen
 import dev.inspecto.android.feature.properties.CreatePropertyScreen
 import dev.inspecto.android.feature.properties.PropertyDetailsScreen
 import dev.inspecto.android.feature.properties.PropertyListScreen
+import dev.inspecto.android.feature.reports.ReportsScreen
 
 /**
  * Root of the UI: sign-in screens while signed out, main screens while signed in. Signing in or
@@ -89,6 +90,7 @@ private fun MainNavHost() {
             val inspectionId = entry.toRoute<InspectionRoute>().inspectionId
             InspectionScreen(
                 onBack = { navController.popBackStack() },
+                onReports = { navController.navigate(ReportsRoute(inspectionId)) },
                 onTakePhoto = { photo ->
                     navController.navigate(
                         CameraRoute(
@@ -101,6 +103,9 @@ private fun MainNavHost() {
                     )
                 },
             )
+        }
+        composable<ReportsRoute> {
+            ReportsScreen(onBack = { navController.popBackStack() })
         }
         composable<CameraRoute> {
             CameraScreen(onBack = { navController.popBackStack() })
