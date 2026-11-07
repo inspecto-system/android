@@ -23,6 +23,7 @@ private fun AppError.Api.apiMessage(): Int =
         "NOT_FOUND" -> R.string.error_not_found
         "VERSION_CONFLICT" -> R.string.error_version_conflict
         "INVALID_STATE_TRANSITION" -> R.string.error_invalid_state
+        "REPORT_NOT_READY" -> R.string.report_not_ready
         "VALIDATION_ERROR" ->
             if ("WEAK_PASSWORD" in fieldErrors.values) R.string.error_weak_password else R.string.error_validation
         else -> R.string.error_unexpected

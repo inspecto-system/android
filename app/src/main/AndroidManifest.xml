@@ -30,6 +30,17 @@
             </intent-filter>
         </activity>
 
+        <!-- Gives a PDF viewer temporary read access to one downloaded report (T-404). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <!-- WorkManager is created on first use with the Hilt worker factory (InspectoApp), not at start-up. -->
         <provider
             android:name="androidx.startup.InitializationProvider"

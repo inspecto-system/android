@@ -254,7 +254,13 @@ class InspectionScreensTest {
             )
         compose.setContent {
             InspectoTheme {
-                InspectionScreen(onBack = {}, onTakePhoto = onTakePhoto, viewModel = viewModel, photos = photos)
+                InspectionScreen(
+                    onBack = {},
+                    onReports = {},
+                    onTakePhoto = onTakePhoto,
+                    viewModel = viewModel,
+                    photos = photos,
+                )
             }
         }
     }

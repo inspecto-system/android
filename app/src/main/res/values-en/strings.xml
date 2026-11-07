@@ -164,4 +164,25 @@
     <string name="sync_discard">Discard them</string>
     <string name="sync_completed_elsewhere">The inspection is already completed on the server. Unsent changes discarded: %1$d.</string>
     <string name="sync_understood">OK</string>
+
+    <!-- Reports (T-404) -->
+    <string name="reports_title">Reports</string>
+    <string name="reports_refresh">Refresh</string>
+    <string name="reports_empty">No reports yet.</string>
+    <string name="report_order">Create PDF report</string>
+    <string name="report_generating">Creating the report, it usually takes a few seconds…</string>
+    <string name="report_created">Report of %1$s %2$s</string>
+    <string name="report_details">Pages: %1$d, size %2$s</string>
+    <string name="report_open">Open</string>
+    <string name="report_downloading">Downloading…</string>
+    <string name="report_status_queued">Queued</string>
+    <string name="report_status_running">Creating</string>
+    <string name="report_status_done">Ready</string>
+    <string name="report_status_failed">Failed</string>
+    <string name="report_still_generating">The report is still being created. Refresh the list a bit later.</string>
+    <string name="report_failed">The report could not be created. Try again.</string>
+    <string name="report_failed_too_large">The report is too large: the inspection has too many photos.</string>
+    <string name="report_failed_unavailable">The server was temporarily unavailable. Try again.</string>
+    <string name="report_not_ready">The report is not ready yet.</string>
+    <string name="report_no_viewer">No app can show PDF files. Install one and try again.</string>
 </resources>
