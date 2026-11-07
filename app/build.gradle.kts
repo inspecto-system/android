@@ -22,6 +22,9 @@ fun apiBaseUrl(default: String): String = providers.gradleProperty("inspecto.api
 /** Base URL of media-service: its own port in debug (10.0.2.2:8082), the same nginx host in release. */
 fun mediaBaseUrl(default: String): String = providers.gradleProperty("inspecto.mediaBaseUrl").getOrElse(default)
 
+/** Base URL of report-service: its own port in debug (10.0.2.2:8083), the same nginx host in release. */
+fun reportBaseUrl(default: String): String = providers.gradleProperty("inspecto.reportBaseUrl").getOrElse(default)
+
 android {
     namespace = "dev.inspecto.android"
     compileSdk = 37
@@ -39,10 +42,12 @@ android {
         debug {
             buildConfigField("String", "API_BASE_URL", "\"${apiBaseUrl("http://10.0.2.2:8081/api/v1/")}\"")
             buildConfigField("String", "MEDIA_BASE_URL", "\"${mediaBaseUrl("http://10.0.2.2:8082/api/v1/")}\"")
+            buildConfigField("String", "REPORT_BASE_URL", "\"${reportBaseUrl("http://10.0.2.2:8083/api/v1/")}\"")
         }
         release {
             buildConfigField("String", "API_BASE_URL", "\"${apiBaseUrl("https://10.0.2.2/api/v1/")}\"")
             buildConfigField("String", "MEDIA_BASE_URL", "\"${mediaBaseUrl("https://10.0.2.2/api/v1/")}\"")
+            buildConfigField("String", "REPORT_BASE_URL", "\"${reportBaseUrl("https://10.0.2.2/api/v1/")}\"")
         }
     }
 
@@ -69,6 +74,12 @@ android {
         getByName("main").kotlin.directories.add(
             layout.buildDirectory
                 .dir("generated/openapi-media/src/main/kotlin")
+                .get()
+                .asFile.path,
+        )
+        getByName("main").kotlin.directories.add(
+            layout.buildDirectory
+                .dir("generated/openapi-report/src/main/kotlin")
                 .get()
                 .asFile.path,
         )
@@ -162,13 +173,35 @@ val openApiGenerateMedia by tasks.registering(org.openapitools.generator.gradle.
     generateModelDocumentation.set(false)
 }
 
+// report-service client (order, poll and download PDF reports); its own package, as for media-service.
+val openApiGenerateReport by tasks.registering(org.openapitools.generator.gradle.plugin.tasks.GenerateTask::class) {
+    generatorName.set("kotlin")
+    library.set("jvm-retrofit2")
+    inputSpec.set(rootProject.file("api/report.yaml").toURI().toString())
+    outputDir.set(
+        layout.buildDirectory
+            .dir("generated/openapi-report")
+            .get()
+            .asFile.path,
+    )
+    packageName.set("dev.inspecto.android.report.api")
+    openapiNormalizer.set(mapOf("FILTER" to "tag:reports"))
+    configOptions.set(openApiGenerate.configOptions)
+    cleanupOutput.set(true)
+    ignoreFileOverride.set(rootProject.file("api/.openapi-generator-ignore").path)
+    generateApiTests.set(false)
+    generateModelTests.set(false)
+    generateApiDocumentation.set(false)
+    generateModelDocumentation.set(false)
+}
+
 // The spec is passed as a URI string, so Gradle does not see its content: without these inputs a
 // changed contract could reuse a client generated from the previous one (up-to-date check, build cache).
 tasks.withType<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>().configureEach {
     inputs.files(rootProject.fileTree("api") { include("*.yaml") }).withPropertyName("contract")
 }
 
-tasks.named("preBuild") { dependsOn("openApiGenerate", openApiGenerateMedia) }
+tasks.named("preBuild") { dependsOn("openApiGenerate", openApiGenerateMedia, openApiGenerateReport) }
 
 // ---------- Code quality (CODE_QUALITY.md §2) ----------
 ktlint {
@@ -177,7 +210,7 @@ ktlint {
 
 // The generated client is part of the main source set (and excluded above), so ktlint runs after it.
 tasks.withType<org.jlleitschuh.gradle.ktlint.tasks.BaseKtLintCheckTask>().configureEach {
-    dependsOn("openApiGenerate", openApiGenerateMedia)
+    dependsOn("openApiGenerate", openApiGenerateMedia, openApiGenerateReport)
 }
 
 detekt {
@@ -193,6 +226,7 @@ kover {
                 packages(
                     "dev.inspecto.android.api",
                     "dev.inspecto.android.media.api",
+                    "dev.inspecto.android.report.api",
                     "hilt_aggregated_deps",
                     "dagger.hilt.internal.aggregatedroot.codegen",
                 )
