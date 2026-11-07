@@ -191,5 +191,18 @@
     <string name="report_failed_too_large">Отчёт получился слишком большим: в осмотре слишком много фото.</string>
     <string name="report_failed_unavailable">Сервер был временно недоступен. Попробуйте ещё раз.</string>
     <string name="report_not_ready">Отчёт ещё не готов.</string>
+    <string name="compare_open">Сравнить осмотры</string>
+    <string name="compare_title">Сравнение осмотров</string>
+    <string name="compare_base">Было (более ранний осмотр)</string>
+    <string name="compare_target">Стало (более поздний осмотр)</string>
+    <string name="compare_need_two">Для сравнения нужно хотя бы два осмотра.</string>
+    <string name="compare_order">Первый осмотр должен быть раньше второго. Выберите другие осмотры.</string>
+    <string name="compare_empty">Дефектов для сравнения нет.</string>
+    <string name="compare_count">%1$s: %2$d</string>
+    <string name="compare_state_new">Новые</string>
+    <string name="compare_state_resolved">Устранены</string>
+    <string name="compare_state_remaining">Остались</string>
+    <string name="compare_state_not_checked">Не проверены</string>
+    <string name="compare_reopened">снова появился</string>
     <string name="report_no_viewer">Нет приложения для просмотра PDF. Установите его и повторите.</string>
 </resources>

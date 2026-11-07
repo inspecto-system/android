@@ -134,7 +134,13 @@ class ScreensTest {
         val viewModel = detailsViewModel()
         compose.setContent {
             InspectoTheme {
-                PropertyDetailsScreen(onBack = {}, onNewInspection = {}, onOpenInspection = {}, viewModel = viewModel)
+                PropertyDetailsScreen(
+                    onBack = {},
+                    onNewInspection = {},
+                    onOpenInspection = {},
+                    onCompare = {},
+                    viewModel = viewModel,
+                )
             }
         }
 
@@ -153,7 +159,13 @@ class ScreensTest {
         val viewModel = detailsViewModel()
         compose.setContent {
             InspectoTheme {
-                PropertyDetailsScreen(onBack = {}, onNewInspection = {}, onOpenInspection = {}, viewModel = viewModel)
+                PropertyDetailsScreen(
+                    onBack = {},
+                    onNewInspection = {},
+                    onOpenInspection = {},
+                    onCompare = {},
+                    viewModel = viewModel,
+                )
             }
         }
 

@@ -7,6 +7,7 @@ import dagger.hilt.components.SingletonComponent
 import dev.inspecto.android.BuildConfig
 import dev.inspecto.android.api.apis.AuthApi
 import dev.inspecto.android.api.apis.ChecklistApi
+import dev.inspecto.android.api.apis.ComparisonApi
 import dev.inspecto.android.api.apis.DefectsApi
 import dev.inspecto.android.api.apis.DictionariesApi
 import dev.inspecto.android.api.apis.InspectionsApi
@@ -72,6 +73,12 @@ object ApiModule {
         @AuthorizedApi client: OkHttpClient,
         json: Json,
     ): PhotosApi = NetworkModule.retrofit(client, json, BuildConfig.MEDIA_BASE_URL).create(PhotosApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideComparisonApi(
+        @AuthorizedApi retrofit: Retrofit,
+    ): ComparisonApi = retrofit.create(ComparisonApi::class.java)
 
     @Provides
     @Singleton

@@ -20,6 +20,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -66,6 +67,7 @@ fun PropertyDetailsScreen(
     onBack: () -> Unit,
     onNewInspection: () -> Unit,
     onOpenInspection: (UUID) -> Unit,
+    onCompare: () -> Unit,
     viewModel: PropertyDetailsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -102,7 +104,7 @@ fun PropertyDetailsScreen(
                                 { dialog = RoomDialog.Rename(it) },
                                 { dialog = RoomDialog.Delete(it) },
                             ),
-                        inspectionActions = InspectionActions(onNewInspection, onOpenInspection),
+                        inspectionActions = InspectionActions(onNewInspection, onOpenInspection, onCompare),
                     )
                 state.loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 else ->
@@ -126,6 +128,7 @@ private class RoomActions(
 private class InspectionActions(
     val onNew: () -> Unit,
     val onOpen: (UUID) -> Unit,
+    val onCompare: () -> Unit,
 )
 
 @Composable
@@ -171,6 +174,12 @@ private fun PropertyContent(
             }
             if (inspections.isEmpty()) {
                 Text(stringResource(R.string.inspections_empty))
+            }
+            // T-405: what changed between two inspections.
+            if (inspections.size >= 2) {
+                OutlinedButton(onClick = inspectionActions.onCompare, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.compare_open))
+                }
             }
         }
         items(inspections, key = { it.id }) { InspectionRow(it, inspectionActions.onOpen) }

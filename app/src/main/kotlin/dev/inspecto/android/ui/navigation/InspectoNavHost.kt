@@ -16,6 +16,7 @@ import androidx.navigation.toRoute
 import dev.inspecto.android.core.auth.SessionState
 import dev.inspecto.android.feature.auth.LoginScreen
 import dev.inspecto.android.feature.auth.RegisterScreen
+import dev.inspecto.android.feature.comparison.ComparisonScreen
 import dev.inspecto.android.feature.inspections.CreateInspectionScreen
 import dev.inspecto.android.feature.inspections.InspectionScreen
 import dev.inspecto.android.feature.photos.CameraScreen
@@ -74,7 +75,11 @@ private fun MainNavHost() {
                 onBack = { navController.popBackStack() },
                 onNewInspection = { navController.navigate(CreateInspectionRoute(propertyId)) },
                 onOpenInspection = { id -> navController.navigate(InspectionRoute(id.toString())) },
+                onCompare = { navController.navigate(CompareRoute(propertyId)) },
             )
+        }
+        composable<CompareRoute> {
+            ComparisonScreen(onBack = { navController.popBackStack() })
         }
         composable<CreateInspectionRoute> {
             CreateInspectionScreen(
