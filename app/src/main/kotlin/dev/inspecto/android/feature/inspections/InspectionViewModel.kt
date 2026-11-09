@@ -18,6 +18,8 @@ import dev.inspecto.android.core.error.messageRes
 import dev.inspecto.android.feature.drafts.DraftApplier
 import dev.inspecto.android.feature.drafts.DraftRepository
 import dev.inspecto.android.feature.drafts.InspectionSnapshot
+import dev.inspecto.android.feature.photos.PhotoRepository
+import dev.inspecto.android.feature.photos.PhotoTarget
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -58,6 +60,8 @@ data class DefectForm(
     val severity: CreateDefectRequest.Severity,
     val title: String,
     val description: String,
+    /** Photo taken in the dialog (T-603): it goes to the first observation, its suggestion with the defect. */
+    val photo: DefectPhoto? = null,
 )
 
 data class InspectionState(
@@ -116,6 +120,7 @@ class InspectionViewModel
         private val repository: InspectionRepository,
         private val defects: DefectRepository,
         private val drafts: DraftRepository,
+        private val photos: PhotoRepository,
     ) : ViewModel() {
         private val inspectionId: UUID = UUID.fromString(checkNotNull(savedStateHandle.get<String>("inspectionId")))
         private val mutableState = MutableStateFlow(InspectionState())
@@ -186,18 +191,26 @@ class InspectionViewModel
         fun saveDefect(form: DefectForm) {
             val draft = state.value.defectDraft ?: return
             run {
-                drafts.createDefect(
-                    inspectionId,
-                    CreateDefectRequest(
-                        roomId = draft.roomId,
-                        checklistItemId = draft.checklistItemId,
-                        categoryId = form.categoryId,
-                        elementGroup = form.elementGroup,
-                        title = form.title.trim(),
-                        severity = form.severity,
-                        description = form.description.trim().ifEmpty { null },
-                    ),
-                )
+                val key =
+                    drafts.createDefect(
+                        inspectionId,
+                        CreateDefectRequest(
+                            roomId = draft.roomId,
+                            checklistItemId = draft.checklistItemId,
+                            categoryId = form.categoryId,
+                            elementGroup = form.elementGroup,
+                            title = form.title.trim(),
+                            severity = form.severity,
+                            description = form.description.trim().ifEmpty { null },
+                            suggestionId = form.photo?.suggestions?.suggestionId,
+                        ),
+                    )
+                val propertyId = state.value.inspection?.propertyId
+                if (form.photo != null && propertyId != null) {
+                    // The first observation has no server id yet: the photo waits for it (T-308).
+                    val target = PhotoTarget(propertyId, inspectionId, null, DraftApplier.localId(key))
+                    photos.enqueue(form.photo.photo, target, form.photo.photoId)
+                }
                 mutableState.update { it.copy(defectDraft = null) }
             }
         }

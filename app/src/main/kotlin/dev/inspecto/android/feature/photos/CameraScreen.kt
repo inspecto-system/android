@@ -137,5 +137,5 @@ private fun capture(
     )
 }
 
-private fun hasCameraPermission(context: Context): Boolean =
+internal fun hasCameraPermission(context: Context): Boolean =
     ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED

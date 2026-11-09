@@ -9,6 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.inspecto.android.BuildConfig
 import dev.inspecto.android.core.db.PendingPhoto
 import dev.inspecto.android.core.db.PendingPhotoDao
+import dev.inspecto.android.core.error.AppError
 import dev.inspecto.android.core.error.apiCall
 import dev.inspecto.android.core.network.AuthorizedApi
 import dev.inspecto.android.feature.drafts.SyncWorker
@@ -17,8 +18,11 @@ import dev.inspecto.android.media.api.models.PhotoLimits
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
 import java.io.IOException
 import java.util.UUID
@@ -35,6 +39,17 @@ data class PhotoTarget(
     val observationId: UUID?,
     val observationKey: UUID? = null,
 )
+
+/** A compressed shot of a new defect, kept until the defect is saved or cancelled (T-603). */
+data class PreparedPhoto(
+    val id: String,
+    val file: File,
+) {
+    /** Deletes the photo when it will not be used (the new defect was cancelled or got another photo). */
+    fun discard() {
+        file.delete()
+    }
+}
 
 /** Photos of observations: the local upload queue, limits and thumbnails from media-service. */
 @Singleton
@@ -59,7 +74,10 @@ class PhotoRepository
         suspend fun enqueue(
             shot: File,
             target: PhotoTarget,
-        ) {
+        ) = enqueue(prepare(shot), target, photoId = null)
+
+        /** Compresses a camera shot for a defect that does not exist yet and deletes the shot (T-603). */
+        suspend fun prepare(shot: File): PreparedPhoto {
             val id = UUID.randomUUID().toString()
             val file = File(File(context.filesDir, DIRECTORY), "$id.jpg")
             withContext(Dispatchers.IO) {
@@ -69,14 +87,41 @@ class PhotoRepository
                     shot.delete()
                 }
             }
+            return PreparedPhoto(id, file)
+        }
+
+        /**
+         * Uploads a prepared photo at once, to ask for category suggestions; `null` without a network
+         * or on any error. The photo's id is its `Idempotency-Key`, so the queue later gets the same
+         * photo instead of a second copy.
+         */
+        suspend fun uploadNow(
+            photo: PreparedPhoto,
+            propertyId: UUID,
+        ): UUID? =
+            try {
+                val part = MultipartBody.Part.createFormData("file", photo.file.name, photo.file.asRequestBody(JPEG))
+                apiCall { photos.uploadPhoto(part, propertyId, photo.id) }.id
+            } catch (ignored: AppError) {
+                // Suggestions are optional: without the upload the photo simply waits in the queue.
+                null
+            }
+
+        /** Puts a prepared photo into the queue; [photoId] is set when it was already uploaded. */
+        suspend fun enqueue(
+            photo: PreparedPhoto,
+            target: PhotoTarget,
+            photoId: UUID?,
+        ) {
             dao.insert(
                 PendingPhoto(
-                    id = id,
+                    id = photo.id,
                     propertyId = target.propertyId.toString(),
                     inspectionId = target.inspectionId.toString(),
                     observationId = target.observationId?.toString(),
                     observationKey = target.observationKey?.toString(),
-                    filePath = file.path,
+                    filePath = photo.file.path,
+                    photoId = photoId?.toString(),
                     createdAt = System.currentTimeMillis(),
                 ),
             )
@@ -125,6 +170,7 @@ class PhotoRepository
 
         private companion object {
             const val DIRECTORY = "photos"
+            val JPEG = "image/jpeg".toMediaType()
 
             // Thumbnails are ≈320 px (ADR-025): 40 of them take a few megabytes.
             const val THUMBNAIL_CACHE = 40

@@ -19,6 +19,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +48,8 @@ fun DefectDialog(
     draft: DefectDraft,
     categories: List<DefectCategory>,
     saving: Boolean,
+    photo: DefectPhotoState,
+    onTakePhoto: () -> Unit,
     onDismiss: () -> Unit,
     onSave: (DefectForm) -> Unit,
 ) {
@@ -55,12 +58,21 @@ fun DefectDialog(
     var severity by remember { mutableStateOf(CreateDefectRequest.Severity.MINOR) }
     var title by remember { mutableStateOf(draft.title) }
     var description by remember { mutableStateOf("") }
+    // The most probable suggested category is preselected; the inspector may choose any other.
+    val suggested =
+        photo.photo
+            ?.suggestions
+            ?.items
+            ?.firstOrNull()
+            ?.categoryId
+    LaunchedEffect(suggested) { suggested?.let { categoryId = it } }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.defect_new_title)) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 FormField(title, { title = it }, R.string.defect_title_field)
+                DefectPhotoStep(photo, categoryId, onTakePhoto) { categoryId = it }
                 CategoryField(categoriesFor(categories, group), categoryId) { categoryId = it }
                 Text(stringResource(R.string.defect_severity), style = MaterialTheme.typography.labelLarge)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

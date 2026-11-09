@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Files a viewer app may read through the FileProvider: downloaded PDF reports only (T-404). -->
+<!-- Files shared through the FileProvider: downloaded PDF reports for a viewer app (T-404) and the
+     file the system camera writes a defect photo into (T-603). -->
 <paths>
     <cache-path name="reports" path="reports/" />
+    <cache-path name="shots" path="shots/" />
 </paths>
