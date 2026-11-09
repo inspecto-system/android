@@ -386,6 +386,7 @@ class InspectionViewModelsTest {
             repository,
             defects,
             drafts.repository,
+            mockk(relaxed = true),
         )
 
     private fun firstKitchenItem(viewModel: InspectionViewModel) =

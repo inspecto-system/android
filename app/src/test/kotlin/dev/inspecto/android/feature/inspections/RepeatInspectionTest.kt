@@ -115,5 +115,6 @@ class RepeatInspectionTest {
             repository,
             defects,
             drafts.repository,
+            mockk(relaxed = true),
         )
 }

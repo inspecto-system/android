@@ -120,6 +120,14 @@
     <string name="defect_new_title">Новый дефект</string>
     <string name="defect_title_field">Что обнаружено</string>
     <string name="defect_category">Категория</string>
+    <string name="defect_photo_take">Сфотографировать дефект</string>
+    <string name="defect_photo_retake">Другое фото</string>
+    <string name="defect_photo_working">Загрузка и подсказка…</string>
+    <string name="defect_photo_attached">Фото прикрепится к дефекту</string>
+    <string name="defect_suggestions_hint">Похоже на:</string>
+    <string name="defect_suggestion_item">%1$s — %2$d %%</string>
+    <string name="defect_suggestions_none">Подсказки нет — выберите категорию сами</string>
+    <string name="defect_suggestions_offline">Нет сети: фото отправится позже, подсказки не будет</string>
     <string name="defect_severity">Серьёзность</string>
     <string name="defect_element">Элемент</string>
     <string name="defect_description">Описание</string>

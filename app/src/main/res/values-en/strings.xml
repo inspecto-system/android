@@ -113,6 +113,14 @@
     <string name="defect_new_title">New defect</string>
     <string name="defect_title_field">What was found</string>
     <string name="defect_category">Category</string>
+    <string name="defect_photo_take">Take a photo of the defect</string>
+    <string name="defect_photo_retake">Another photo</string>
+    <string name="defect_photo_working">Uploading and suggesting…</string>
+    <string name="defect_photo_attached">The photo will be attached to the defect</string>
+    <string name="defect_suggestions_hint">Looks like:</string>
+    <string name="defect_suggestion_item">%1$s — %2$d%%</string>
+    <string name="defect_suggestions_none">No suggestion — choose the category yourself</string>
+    <string name="defect_suggestions_offline">No network: the photo will be sent later, no suggestion</string>
     <string name="defect_severity">Severity</string>
     <string name="defect_element">Element</string>
     <string name="defect_description">Description</string>

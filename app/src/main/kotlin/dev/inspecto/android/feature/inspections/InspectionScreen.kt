@@ -73,6 +73,7 @@ fun InspectionScreen(
     onTakePhoto: (PhotoRequest) -> Unit,
     viewModel: InspectionViewModel = hiltViewModel(),
     photos: PhotoQueueViewModel = hiltViewModel(),
+    defectPhoto: DefectPhotoViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val queue by photos.state.collectAsStateWithLifecycle()
@@ -139,13 +140,24 @@ fun InspectionScreen(
             }
         }
     }
+    val photoState by defectPhoto.state.collectAsStateWithLifecycle()
+    val propertyId = inspection?.propertyId
+    val takeShot = rememberShotLauncher { shot -> propertyId?.let { defectPhoto.taken(shot, it) } }
     state.defectDraft?.let { draft ->
         DefectDialog(
             draft = draft,
             categories = state.categories,
-            saving = state.busy,
-            onDismiss = { viewModel.showDefectDialog(null) },
-            onSave = viewModel::saveDefect,
+            saving = state.busy || photoState.working,
+            photo = photoState,
+            onTakePhoto = takeShot,
+            onDismiss = {
+                defectPhoto.cancel()
+                viewModel.showDefectDialog(null)
+            },
+            onSave = { form ->
+                viewModel.saveDefect(form.copy(photo = photoState.photo))
+                defectPhoto.saved()
+            },
         )
     }
 }

@@ -235,6 +235,7 @@ class InspectionScreensTest {
     private val queue = MutableStateFlow<List<PendingPhoto>>(emptyList())
 
     private val drafts = TestDrafts()
+    private val suggestions = mockk<SuggestionRepository>(relaxed = true)
 
     private fun showInspection(onTakePhoto: (PhotoRequest) -> Unit = {}) {
         every { photoRepository.pending(inspectionId) } returns queue
@@ -244,6 +245,7 @@ class InspectionScreensTest {
                 repository,
                 defects,
                 drafts.repository,
+                photoRepository,
             )
         val photos =
             PhotoQueueViewModel(
@@ -252,6 +254,7 @@ class InspectionScreensTest {
                 drafts.repository,
                 drafts.notices,
             )
+        val defectPhoto = DefectPhotoViewModel(photoRepository, suggestions)
         compose.setContent {
             InspectoTheme {
                 InspectionScreen(
@@ -260,6 +263,7 @@ class InspectionScreensTest {
                     onTakePhoto = onTakePhoto,
                     viewModel = viewModel,
                     photos = photos,
+                    defectPhoto = defectPhoto,
                 )
             }
         }
