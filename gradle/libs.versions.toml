@@ -21,7 +21,7 @@ retrofit = "3.0.0"
 okhttp = "5.5.1"
 camerax = "1.6.1"
 work = "2.11.2"
-room = "2.8.4"
+room = "2.8.5"
 androidx-hilt = "1.4.0"
 exifinterface = "1.4.1"
 
